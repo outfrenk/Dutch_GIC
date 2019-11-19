@@ -1,0 +1,5 @@
+partial_code
+*.txt
+*.cpt
+*.history
+.ipynb_checkpoints
