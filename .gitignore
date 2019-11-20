@@ -1,5 +1,5 @@
-
 *.txt
 *.cpt
 *.history
 .ipynb_checkpoints
+.directory
