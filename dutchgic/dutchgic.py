@@ -11,25 +11,38 @@ class GIC:
         respath : string (required)
            location to folder where results need to be written
         date : string (optional)
-           date of event for GIC calculation. Should be given as dd-mm-yyyy
+           date of event for GIC calculation. Should be given as dd-mm-yyyy. Standard set as None type
         qdate : string (optional) 
-           quiet magnetic day --> used to substract base magnetic value from active day (given by date) 
+           quiet magnetic day --> used to substract base magnetic value from active day (given by date). Should be given as dd-mm-yyyy. Standard set as None type
+
+        Created Folders 
+        ---------------
+        "{self.base}/{self.date}" : folder where data magnetic station of active day is unpacked
+        "{self.base}/{self.qdate}" : folder where data magnetic station of quiet day is unpacked
         
         Returns
         -------
-        self.minute : if True, data is minute type (set at False)
-        self.samples : nr of samples per day (set at zero)
-        self.days : number of days to be calculated (set at one)
-        self.lentrafo : number of transformers in powernetwork csv file
-        self.day : day number of event
-        self.month : month number of event
-        self.year : year of event
-        self.datevar : date returned as yyyy-mm-dd
-        self.statpath : exact location to folder where data magnetic station of active day is unpacked
-        self.quietpath : exact location to folder where data magnetic station of quiet day is unpacked
-        self.netpath, self.base, self.respath, self.date, self.qdate (see Parameters)
-        
-        Folders : "{self.base}/{self.date}" and "{self.base}/{self.qdate}"
+        self.minute : boolean
+           if True, data is recorded per minute; if False, data is recorded per second (set at False)
+        self.samples : integer 
+           nr of samples per day (set at zero)
+        self.days : integer 
+           number of days to be calculated (set at one)
+        self.lentrafo : integer
+           number of transformers in powernetwork csv file
+        self.day : string 
+           day number of event
+        self.month : string
+           month number of event
+        self.year : string 
+           year of event
+        self.datevar : string 
+           date returned as yyyy-mm-dd
+        self.statpath : string
+           exact location to folder where data magnetic station of active day is unpacked
+        self.quietpath : string
+           exact location to folder where data magnetic station of quiet day is unpacked
+        self.netpath, self.base, self.respath, self.date, self.qdate (see Parameters) : all strings
         """
         import logging
         import os
@@ -51,7 +64,7 @@ class GIC:
                 self.year=datesplit[2]
                 self.datevar=f'{self.year}-{self.month}-{self.day}' #get day string in reverse order, so yyyy-mm-dd
             except:
-                raise ValueError('Date has not been inputted correctly, it should be dd-mm-yyyy')
+                logging.warning('Date has not been inputted correctly, it should be dd-mm-yyyy')
             try:
                 self.statpath=f'{self.base}/{self.date}'
                 os.mkdir(f'{self.base}/{self.date}')
@@ -74,7 +87,39 @@ class GIC:
         f.write("0 100/0/0 10000 100/0/0")
         f.close()
 
-    def BtoE(self,model,scaling=1):                        
+    def BtoE(self,model,scaling=1):
+        """ Transforms magnetic field values to electric field value using a given conductivity model. 
+        Theory by Weaver's 'Mathematical methods for geo-electromagnetic induction' (1994) and Wait's 'Propagation of radio waves over a stratified ground' (1985)
+
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        model : integer (required)
+           determines which conductivity model is used to transform magnetic field observations to electric field
+        scaling : float (optional)
+           factor that is multiplied with magnetic field observations/interpolations to create extreme events. Standard set at one (no extra scaling).
+        
+        NEEDS MAGNETIC INTERPOLATED VALUES (.csv and .csv.Y) TO WORK!
+ 
+        Functions
+        ----------
+        check_sampling() : obtain amount of samples, minute or second data, and amount of days from magnetic data
+        filt(f,y) : applies a Wiener filter to remove high frequency noise
+        Parzen(N) : creates a Parzen window for given length
+        transferfunction(f,model) : gives factor to transform magnetic to electric field
+        writing_electric(proc#,path,E,start,stop,lon,lat,localvar) : writes electric field into files per timestep
+        
+        Created Folders
+        ---------------
+        "{self.respath}/{self.date}/electric_field_north" : folder where electric field values in northern direction per timestep are stored
+        "{self.respath}/{self.date}/electric_field_east" : folder where electric field values in eastern direction per timestep are stored
+
+        Returns
+        -------
+        Electric_*.csv : csv file
+           writes electric files per timestep into folder "{self.respath}/{self.date}/electric_field_north" and "{self.respath}/{self.date}/electric_field_east"
+        """
         import numpy as np
         import os
         from multiprocessing import Process
@@ -233,12 +278,39 @@ class GIC:
             thread.join()
         
     def calculate_GIC(self,guess=80, plotting=True):
+        """ Calculates geomagnetically induced current in a given powergrid
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function.
+        guess : integer (optional)
+           gives an estimation in how many pieces the integration of the electric field should be executed in the calcE function. Standard set at 80.
+        plotting : boolean (optional)
+           if True, figures are generated containing the spatial variation of GICs in the given powergrid per timestep. Standard set at True
+
+        NEEDS POWERGRID CSV FILES AND ELECTRIC FIELD TO WORK
+        
+        Functions
+        ---------
+        check_sampling() : obtain amount of samples, minute or second data, and amount of days from magnetic data
+        GICfunction(proc#,start,stop,trafo,EX_matrix,EY_matrix,lat,lon,station_lat,station_lon,trafo_connect,trafo_cond,ground_cond,kabels,trafo_all_connections,guess,localvar,lock,plotting) : calculates the GICs in the network
+        
+        Created Folders
+        ---------------
+        "{self.respath}/{self.date}/GIC" : folder that contains results of GIC calculation
+        
+        Returns
+        -------
+        GIC_*.csv : csv file
+           textfiles containing GICs at every transformer station per timestep.
+        GIC_at_*.png : png file 
+           if Plotting=True, images of spatial variation GICs in powergrid per timestep
+        """
         import os
         import pandas as pd
         import numpy as np
-        import math
         import logging
-        from scipy.interpolate import griddata
         from threading import local
         localvar=local()
         from multiprocessing import Process
@@ -273,8 +345,8 @@ class GIC:
         try:
             os.mkdir(f'{self.respath}/{self.date}/GIC')
         except:
-            logging.warning("Directory has already been created, data could be destroyed!")
-            print("Directory has already been created, data could be destroyed!")
+            logging.warning(f"Directory '{self.respath}/{self.date}/GIC' has already been created, data could be destroyed!")
+            print(f"Directory '{self.respath}/{self.date}/GIC' has already been created, data could be destroyed!")
         logging.info('Reading in datasets!')
         Electric_Xfiles=[]
         Electric_Yfiles=[]
@@ -329,8 +401,6 @@ class GIC:
         trafo_connect=np.zeros((len(trafo),len(trafo))) #connectivity trafo
         trafo_all_connections=np.zeros((len(trafo),len(kabels))) #connections possible between trafo and every cable
         trafo_cond=np.zeros((len(trafo),len(trafo))) # The conductivity matrix
-        stat_heading=np.zeros((len(trafo),len(trafo))) #heading stations to another
-        stat_length=np.zeros((len(trafo),len(trafo))) #length between stations
         station_lat=np.zeros(len(trafo)) #latitude stations in degrees
         station_lon=np.zeros(len(trafo)) #longitude stations in degrees
         ground_cond=np.zeros(len(trafo))
@@ -375,23 +445,7 @@ class GIC:
                     trafo_cond[row,column]=-1/temp2 #add cable resistance to off-diagonal
                     trafo_cond[row,row]+=1/temp2 #add cable resistance to trace
                     del temp, temp2
-        ###### get heading and length between stations #####
-        for row,line in enumerate(trafo_connect):
-            for column,item in enumerate(line):
-                if item and column>=row:
-                    Alat=np.radians(trafo.at[row,'lat'])
-                    Alon=np.radians(trafo.at[row,'lon'])
-                    Blat=np.radians(trafo.at[column,'lat'])
-                    Blon=np.radians(trafo.at[column,'lon'])
-                    temp=math.cos(Blat)*math.sin(Blon-Alon)
-                    temp2=math.cos(Alat)*math.sin(Blat)-math.sin(Alat)*math.cos(Blat)*math.cos(Blon-Alon)
-                    stat_heading[row,column]=np.abs(math.degrees(math.atan(temp/temp2)))
-                    temp3=math.sin((Blat-Alat)/2.)**2+math.cos(Alat)*math.cos(Blat)*math.sin((Blon-Alon)/2.)**2
-                    stat_length[row,column]=6371000*2*math.atan(np.sqrt(temp3)/np.sqrt(1-temp3))
-                    stat_heading[column,row]=stat_heading[row,column]
-                    stat_length[column,row]=stat_length[row,column]
-                    del temp, temp2, temp3, Alat, Alon, Blat, Blon
-        del line, item, row, column, value, counter
+
         ######### get necessary arrays ########
         for item in range(len(trafo)):
             station_lat[item]=trafo.at[item,'lat']
@@ -405,7 +459,7 @@ class GIC:
         nrsteps=int(self.samples*self.days/n)
         threads=list()
         for index in range(n):
-            q=Process(target=self.GICfunction, args=(index+1,nrsteps*index,nrsteps*(index+1),trafo,EX_matrix,EY_matrix,lat,lon,station_lat,station_lon,trafo_connect,stat_heading,stat_length,trafo_cond,ground_cond,kabels,trafo_all_connections,guess,localvar,lock,plotting))
+            q=Process(target=self.GICfunction, args=(index+1,nrsteps*index,nrsteps*(index+1),trafo,EX_matrix,EY_matrix,lat,lon,station_lat,station_lon,trafo_connect,trafo_cond,ground_cond,kabels,trafo_all_connections,guess,localvar,lock,plotting))
             threads.append(q)
             q.start()
         for thread in threads:
@@ -415,10 +469,37 @@ class GIC:
         logging.shutdown()
         
     def calcE(self,kabels,EX_matrix,EY_matrix,lat,lon,time,guess,localvar): #E for all cables
+        """ Integrates the electric field over the given cables to obtain potentials
+        
+        Parameters
+        ----------
+        kabels : pandas dataframe (required)
+           contains information about the transmission cables, see spreadsheetcables.ods for clarification
+        EX_matrix : numpy matrix (required)
+           electric field in northern direction stored in a (tsteps,npts) matrix. tsteps are the amount of timesteps, npts are the number of spatial points for which the electric field is calculated
+        EY_matrix : numpy matrix (required)
+           electric field in eastern direction stored in a (tsteps,npts) matrix. tsteps are the amount of timesteps, npts are the number of spatial points for which the electric field is calculated
+        lat : numpy array (required)
+           latitude of spatial points where electric field is calculated
+        lon : numpy array (required)
+           longitude of spatial points where electric field is calculated
+        time : integer (required)
+           timestep for which the integration has to be carried out
+        guess : integer (required)
+           initial amount of integration intervals to calculate the electric potential
+        localvar : object (required)
+           object were every single processor can store its variables separately without mixing them up between processors
+        
+        NEEDS TO BE CALLED WITH GICfunction() TO WORK PROPERLY
+           
+        Returns
+        -------
+        localvar.E_all : numpy matrix
+           electric potential (V/m) of every transmission cable
+        """
         from scipy.interpolate import griddata
         from scipy.integrate import simps
         import numpy as np
-        import pandas as pd
         import logging
                          
         localvar.heading=np.zeros(len(kabels))
@@ -441,7 +522,7 @@ class GIC:
                 localvar.E_all[number,0]+=abs(np.cos(np.radians(localvar.heading[number])))*simps(localvar.GridEX[number,:],np.linspace(0,kabels.at[number,'length'],nr))
                 localvar.E_all[number,1]+=abs(np.sin(np.radians(localvar.heading[number])))*simps(localvar.GridEY[number,:],np.linspace(0,kabels.at[number,'length'],nr))
 
-            if np.sum(abs(localvar.old-localvar.E_all))<10**-5:
+            if np.sum(abs(localvar.old-localvar.E_all))<10**-5: #only continue when difference in integration is lower than tolerance
                 logging.info(f'{nr-(guess-1)} iterations were used for time={time}')
                 break
             else:
@@ -451,6 +532,24 @@ class GIC:
         return localvar.E_all
     
     def check_sampling(self):
+        """ Checks magnetic data to get various 'self' objects, when functions are called separately.
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+
+        NEEDS MAGNETIC INTERPOLATED DATA TO WORK
+        
+        Returns
+        -------
+        self.samples : integer
+           amount of samples per day (either 1440 or 86400)
+        self.days : integer
+           amount of days for which GICs should be calculated
+        self.minute : boolean
+           if True, data is recorded per minute; if False, data is recorded per second        
+        """
         import os
         self.samples=len([name for name in os.listdir(f'{self.respath}/{self.date}/interpolation') if os.path.isfile(os.path.join(f'{self.respath}/{self.date}/interpolation', name))])/2
         if self.samples%(24*60*60)==0:
@@ -465,11 +564,42 @@ class GIC:
             raise Exception("Data is missing, or it is no minute or second data")
     
     def download_data(self,day,month,year,station,types=True):
+        """ Automatically downloads magnetic data from the Intermagnet ftp server
+           ('ftp://ftp.seismo.nrcan.gc.ca/intermagnet')
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        day : string (required)
+           daynumber of to be downloaded date
+        month : string (required)
+           monthnumber of to be downloaded date
+        year : string (required)
+           year of to be downloaded date
+        station : string of length 3 (required)
+           abbreviation of magnetic observatory in IAGA code
+        types : boolean (optional)
+           if True, minute data is to be downloaded (not available before 1991); if False, second data is to be downloaded (not available before 2011)
+           
+        Created Folders
+        ---------------
+        '{self.base}/{day}-{month}-{year}' : folder that will contain downloaded data
+        
+        Returns
+        -------
+        *dmin.min or *qsec.sec : text files
+           header information and magnetic observations for one day
+        """
         from urllib.request import urlretrieve
         import os
         import logging
         day=str(day).zfill(2)
         month=str(month).zfill(2)
+        try:
+            os.mkdir(f'{self.base}/{day}-{month}-{year}')
+        except:
+            logging.warning(f"Directory '{self.base}/{day}-{month}-{year}' might already exist, or cannot be formed")
         logging.info(f'Downloading data for station {station} on {day}-{month}-{year}')
         if types==True: #minute data
             URL="ftp://ftp.seismo.nrcan.gc.ca/intermagnet/minute/definitive/IAGA2002"
@@ -489,7 +619,25 @@ class GIC:
             os.system(f'gunzip {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz') 
             os.system(f'rm {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz') 
 
-    def filt(self,x,ft_matrix): #create Wiener filter to remove noise from magnetic signal
+    def filt(self,x,ft_matrix): 
+        """ Applies Wiener filter to given data to remove noise
+        
+        Parameters
+        ----------
+        x : numpy array (required)
+           contains frequency components from zero to larger
+        ft_matrix : numpy matrix (required)
+           contains Fourier transformed data (frequency domain) in a (fstep,pnts) matrix. fstep is amount of frequency steps, pnts is the amount of spatial points. 
+        
+        Functions
+        ---------
+        func(x,a,b) : creates exponential function of type b*10^(a*x)
+        
+        Returns
+        -------
+        signal : numpy matrix
+           (fstep,pnts) matrix containing Wiener filtered data
+        """
         from scipy.optimize import curve_fit
         import numpy as np
         signal=np.zeros((len(ft_matrix),len(ft_matrix[0])), dtype='complex')
@@ -503,6 +651,25 @@ class GIC:
         return signal
             
     def find_quiet_date(self):
+        """ Find solar quiet day nearest to inputted assumed solar active day using the ftp server of Potzdam
+           ('ftp://ftp.gfz-potsdam.de/pub/home/obs/kp-ap/quietdst')
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        
+        NEED DATE OF ACTIVE DAY TO WORK
+        
+        Returns
+        -------
+        Quiet.day : string
+           daynumber of nearest solar quiet day
+        Quiet.month : string
+           monthnumber of nearest solar quiet day
+        Quiet.year : string
+            year of nearest solar quiet day
+        """
         from urllib.request import urlretrieve
         import os
         import logging
@@ -530,13 +697,11 @@ class GIC:
             for counter,line in enumerate(f):
                 if counter==(int(self.year)-int(self.year[0:3])*10)*14+monthlist[int(self.month)-1]+2:
                     words=line.split()
-                    word=words[2]
                     option0=[''.join(i for i in words[2] if i.isdigit()), int(self.month)-1, self.year]
                     option0A=[''.join(i for i in words[3] if i.isdigit()), int(self.month)-1, self.year]
 
                 if counter==(int(self.year)-int(self.year[0:3])*10)*14+monthlist[int(self.month)]+2:
                     words=line.split()
-                    word=words[2]
                     option1=[''.join(i for i in words[2] if i.isdigit()), self.month, self.year]
                     option1A=[''.join(i for i in words[3] if i.isdigit()), self.month, self.year]
                     f.close()
@@ -546,7 +711,6 @@ class GIC:
             for counter,line in enumerate(f):
                 if counter==4:
                     words=line.split()
-                    word=words[2]
                     option2=[''.join(i for i in words[2] if i.isdigit()), 1, int(self.year)+1]
                     option2A=[''.join(i for i in words[3] if i.isdigit()), 1, int(self.year)+1]
                     f.close()
@@ -566,7 +730,6 @@ class GIC:
             for counter,line in enumerate(f):
                 if counter==130:
                     words=line.split()
-                    word=words[2]
                     option0=[''.join(i for i in words[2] if i.isdigit()), 12, int(self.year)-1]
                     option0A=[''.join(i for i in words[3] if i.isdigit()), 12, int(self.year)-1]
                     f.close()
@@ -576,13 +739,11 @@ class GIC:
             for counter,line in enumerate(f):
                 if counter==(int(self.year)-int(self.year[0:3])*10)*14+monthlist[int(self.month)]+2:
                     words=line.split()
-                    word=words[2]
                     option1=[''.join(i for i in words[2] if i.isdigit()), self.month, self.year]
                     option1A=[''.join(i for i in words[3] if i.isdigit()), self.month, self.year]
 
                 if counter==(int(self.year)-int(self.year[0:3])*10)*14+monthlist[int(self.month)+1]+2:
                     words=line.split()
-                    word=words[2]
                     option2=[''.join(i for i in words[2] if i.isdigit()), int(self.month)+1, self.year]
                     option2A=[''.join(i for i in words[3] if i.isdigit()), int(self.month)+1, self.year]
                     f.close()
@@ -595,19 +756,16 @@ class GIC:
                 if self.month=='12':
                     if counter==(int(self.year)-int(self.year[0:3])*10)*14+monthlist[int(self.month)-1]+2:
                         words=line.split()
-                        word=words[2]
                         option0=[''.join(i for i in words[2] if i.isdigit()), int(self.month)-1, self.year]
                         option0A=[''.join(i for i in words[3] if i.isdigit()), int(self.month)-1, self.year]
                 
                     if counter==(int(self.year)-int(self.year[0:3])*10)*14+monthlist[int(self.month)]+2:
                         words=line.split()
-                        word=words[2]
                         option1=[''.join(i for i in words[2] if i.isdigit()), self.month, self.year]
                         option1A=[''.join(i for i in words[3] if i.isdigit()), self.month, self.year]
                         
                     if counter==(int(self.year)-int(self.year[0:3])*10+1)*14+4:
                         words=line.split()
-                        word=words[2]
                         option2=[''.join(i for i in words[2] if i.isdigit()), 1, int(self.year)+1]
                         option2A=[''.join(i for i in words[3] if i.isdigit()), 1, int(self.year)+1]
                         f.close()
@@ -616,19 +774,16 @@ class GIC:
                 elif self.month=='1':
                     if counter==(int(self.year)-int(self.year[0:3])*10)*14+2:
                         words=line.split()
-                        word=words[2]
                         option0=[''.join(i for i in words[2] if i.isdigit()), 12, int(self.year)-1]
                         option0A=[''.join(i for i in words[3] if i.isdigit()), 12, int(self.year)-1]
                 
                     if counter==(int(self.year)-int(self.year[0:3])*10)*14+monthlist[int(self.month)]+2:
                         words=line.split()
-                        word=words[2]
                         option1=[''.join(i for i in words[2] if i.isdigit()), self.month, self.year]
                         option1A=[''.join(i for i in words[3] if i.isdigit()), self.month, self.year]
                         
                     if counter==(int(self.year)-int(self.year[0:3])*10)*14+monthlist[int(self.month)+1]+2:
                         words=line.split()
-                        word=words[2]
                         option2=[''.join(i for i in words[2] if i.isdigit()), int(self.month)+1, self.year]
                         option2A=[''.join(i for i in words[3] if i.isdigit()), int(self.month)+1, self.year]
                         f.close()
@@ -637,19 +792,16 @@ class GIC:
                 else:
                     if counter==(int(self.year)-int(self.year[0:3])*10)*14+monthlist[int(self.month)-1]+2:
                         words=line.split()
-                        word=words[2]
                         option0=[''.join(i for i in words[2] if i.isdigit()), int(self.month)-1, self.year]
                         option0A=[''.join(i for i in words[3] if i.isdigit()), int(self.month)-1, self.year]
                 
                     if counter==(int(self.year)-int(self.year[0:3])*10)*14+monthlist[int(self.month)]+2:
                         words=line.split()
-                        word=words[2]
                         option1=[''.join(i for i in words[2] if i.isdigit()), self.month, self.year]
                         option1A=[''.join(i for i in words[3] if i.isdigit()), self.month, self.year]
                         
                     if counter==(int(self.year)-int(self.year[0:3])*10)*14+monthlist[int(self.month)+1]+2:
                         words=line.split()
-                        word=words[2]
                         option2=[''.join(i for i in words[2] if i.isdigit()), int(self.month)+1, self.year]
                         option2A=[''.join(i for i in words[3] if i.isdigit()), int(self.month)+1, self.year]
                         f.close()
@@ -663,9 +815,84 @@ class GIC:
         return Quiet.day, Quiet.month, Quiet.year
         
     def func(self,x,a,b):
+        """ Calculates a exponential function
+        
+        Parameters
+        ----------
+        x : float (required)
+           variable
+        a : float (required)
+           constant
+        b : float (required)
+           constant
+        
+        Returns
+        -------
+        b*10 ** (a*x) : float
+            exponential function
+        """
         return b*10 ** (a*x)
     
-    def GICfunction(self,q,begin,end,trafo,EX_matrix,EY_matrix,lat,lon,station_lat,station_lon,trafo_connect,stat_heading,stat_length,trafo_cond,ground_cond,kabels,trafo_all_connections,guess,localvar,lock,plotting):
+    def GICfunction(self,q,begin,end,trafo,EX_matrix,EY_matrix,lat,lon,station_lat,station_lon,trafo_connect,trafo_cond,
+                    ground_cond,kabels,trafo_all_connections,guess,localvar,lock,plotting):
+        """ Calculate and plot the GICs in the powergrid
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        q : integer (required)
+           processor number
+        begin : integer (required)
+           starting timestep of calculation
+        end : integer (required)
+           ending timestep of calculation
+        trafo : pandas dataframe (required)
+           dataframe containing information about the transformers, see spreadsheettrafo.ods for clarification
+        EX_matrix : numpy matrix (required)
+           electric field in northern direction stored in a (tsteps,npts) matrix. tsteps are the amount of timesteps, npts are the number of spatial points for which the electric field is calculated
+        EY_matrix : numpy matrix (required)
+           electric field in eastern direction stored in a (tsteps,npts) matrix. tsteps are the amount of timesteps, npts are the number of spatial points for which the electric field is calculated
+        lat : numpy array (required)
+           latitude of spatial points where electric field is calculated
+        lon : numpy array (required)
+           longitude of spatial points where electric field is calculated
+        station_lat : float (required)
+           latitude of tranformer station
+        station_lon : float (required)
+           longitude of tranformer station
+        trafo_connect : boolean numpy matrix (required)
+           symmetric matrix (len(trafo),len(trafo)) that determines whether tranformers are directly connected to each other (=True) or not (=False)
+        trafo_cond : numpy matrix (required)
+           conductivity matrix as defined by Boteler & Pirjola's 'Modeling geomagnetically induced currents' (2017)
+        ground_cond : numpy array (required)
+           conductivity of transformer to ground
+        kabels : pandas dataframe (required)
+           contains information about the transmission cables, see spreadsheetcables.ods for clarification
+        trafo_all_connections : boolean numpy array (required)
+           matrix (size: amount of transformers x amount of cables) that determines which cables are connected to a transformer (=True) or not (=False)
+        guess : integer (required)
+           initial amount of integration intervals to calculate the electric potential
+        localvar : object (required)
+           object were every single processor can store its variables separately without mixing them up between processors
+        lock : object (required)
+           locks a piece of code for other processors when one processor is working on it
+        plotting : boolean (required)
+           if True, GIC_at_*.png files are created
+
+        NEEDS TO BE CALLED WITH calculate_GIC() TO WORK PROPERLY 
+
+        Functions
+        ---------
+        ObtainJ(proc#,kabels,EX_matrix,EY_matrix,lat,lon,localvar.time,trafo_connect,trafo_all_connections,trafo_cond,trafo,guess,localvar) : calculates induced currents in transmission cables
+        
+        Returns
+        -------
+        GIC_*.csv : csv file
+           textfiles containing GICs at every transformer station per timestep.
+        GIC_at_*.png : png file 
+           if Plotting=True, images of spatial variation GICs in powergrid per timestep
+        """
         import numpy as np
         import pandas as pd
         import os
@@ -687,18 +914,8 @@ class GIC:
                 localvar.tijd=str(localvar.time).zfill(4)
             else:
                 localvar.tijd=str(localvar.time).zfill(5)
-#             if localvar.time<10:
-#                 localvar.tijd=f'000{localvar.time}'
-#             elif localvar.time<100 and localvar.time>9:
-#                 localvar.tijd=f'00{localvar.time}'
-#             elif localvar.time<1000 and localvar.time>99:
-#                 localvar.tijd=f'0{localvar.time}'
-#             else:
-#                 localvar.tijd=f'{localvar.time}'
-
             ##### Save files #######
             localvar.GIC=pd.DataFrame(columns=['lon','lat','GIC',f'GIC/{localvar.maxAMP}'])
-            GICmatrix=pd.DataFrame()
             localvar.GIC.at[:,'lon']=station_lon
             localvar.GIC.at[:,'lat']=station_lat
             localvar.GIC.at[:,'GIC']=localvar.I_GIC
@@ -729,10 +946,6 @@ class GIC:
                         minute=str(localvar.time%60).zfill(2)
                         hour=str(int(localvar.time/60)%24).zfill(2)
                         DAY=int(localvar.time/(60*24))
-#                         if minute < 10:
-#                             minute=f'0{minute}'
-#                         if hour < 10:
-#                             hour=f'0{hour}'
                         title=f'GIC at {self.date} - {DAY}:{hour}:{minute}'
                         proj='-JM15C -P'
                         lims=f'-R{lim1}/{lim2}/{lim3}/{lim4}'
@@ -749,13 +962,6 @@ class GIC:
                         minute=str(int(localvar.time/60)%60).zfill(2)
                         hour=str(int(localvar.time/(60*60))%24).zfill(2)
                         DAY=int(localvar.time/(60*60*24))
-#                         if second < 10:
-#                             second=f'0{second}'     
-#                         if minute < 10:
-#                             minute=f'0{minute}'
-#                         if hour < 10:
-#                             hour=f'0{hour}'
-
                         title=f'GIC at {self.date} - {DAY}:{hour}:{minute}:{second}'
                         proj='-JM15C -P'
                         lims=f'-R{lim1}/{lim2}/{lim3}/{lim4}'
@@ -774,6 +980,30 @@ class GIC:
         logging.info(f'Thread {q} is finished!')
     
     def GIC_index(self,overwrite=False):
+        """ Calculates the GIC index for all given magnetic station observatories according to Marshall et al.'s 'A preliminary risk assessment of the Aus-
+tralian region power network to space weather' (2011)
+
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        overwrite : boolean (optional)
+           if True, old maximum GIC values are overwritten
+           
+        NEEDS MAGNETIC OBSERVATIONS TO WORK
+         
+        Functions
+        ---------
+        check_sampling() : obtain amount of samples, minute or second data, and amount of days from magnetic data
+        Parzen(N) : creates a Parzen window for given length
+        
+        Returns
+        -------
+        GIC_index.txt : text file
+           textfile containing the maximum GIC index per magnetic observatory, in following order : lon, lat, GICx-index, GICy-index
+        GICx_index.png/GICy_index.png : png file
+           graph of GIC index in both northern and eastern direction
+        """
         import os
         import numpy as np
         import pandas as pd
@@ -785,7 +1015,6 @@ class GIC:
             g=open(f'{self.respath}/{self.date}/GIC_index.txt','a+')
         maxx=0
         maxy=0
-        GIC=pd.DataFrame(columns=['lon','lat','GICx','GICy'])
         Xcomp=np.zeros(self.samples*self.days)
         XParz=np.zeros(self.samples*3*self.days)
         GICxft=np.zeros((int(self.samples/2*3*self.days)+1), dtype='complex')
@@ -895,7 +1124,18 @@ class GIC:
         figx.savefig(f'{self.respath}/{self.date}/GICx_index.png')
         figy.savefig(f'{self.respath}/{self.date}/GICy_index.png')
         
-    def glue_data(self,paths,foldername):#days
+    def glue_data(self,paths,foldername):
+        """ Put data of mutiple consequental days together
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        paths : array of strings (required)
+           paths, IN RIGHT ORDER, of the magnetic interpolated data of the consequental days
+        foldername : string (required)
+           name of the folder where these combined magnetic interpolations need to go
+        """
         import os #BE SURE TO PLACE THEM (Magnetic interpolation) IN CORRECT ORDER! SO E.G.: [29-10-2003, 30-10-2003, 31-10-2003]
         import logging
         logging.warning(f'Look Out! self.date is now changed from {self.date} to {foldername}!')
@@ -937,6 +1177,22 @@ class GIC:
         logging.info('Data copying is finished!')
                     
     def glue_video(self,nameout,gluefile=None,videos=None):
+        """ Combine multiple mp4-videos together
+        
+        Parameters
+        ----------
+        nameout : string (required)
+           name of the new mp4-video file
+        gluefile : string (only if videos=None, required; else optional)
+           file containing the location of the videos to be merged, starting with `file'
+        videos : array of strings (only if gluefile=None, required; else optional)
+           array containing the location of the different videos in consequental order
+           
+        Returns
+        -------
+        *.mp4 : mp4-video file
+           merged video
+        """
         import os
         if gluefile==None:
             f=open('gluefile.txt', 'w+')
@@ -950,6 +1206,23 @@ class GIC:
         # gluefile should have lines like: file '/usr/people/out/Documents/Magnetic_field/station_results/31-10-2003/GIC.mp4'
         
     def iteratestation(self,figures=False,plots=True):
+        """ Iterate the function newplotspace for multiple magnetic observatories
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        figures : boolean (optional)
+           if True, figures are opened in the terminal
+        plots : boolean (optional)
+           if True, plots of mangetic signal are generated and placed in a folder
+        
+        NEEDS RAW DATA MAGNETIC OBSERVATORIES TO WORK
+        
+        Functions
+        ---------
+        newplotspace(stringactive,stringquiet,figures,plots) : function that extract magnetic data and returns reduced magnetic signal by subtracting quiet day from active day
+        """
         import os
         string=os.listdir(self.statpath)
         string=sorted(string)
@@ -960,16 +1233,32 @@ class GIC:
         for counter,item in enumerate(string):
             self.newplotspace(string[counter],stringquiet[counter],figures=False,plots=True)
      
-    def magnetic_interpolation(self): #interpolate magnetic field
-        import re
+    def magnetic_interpolation(self):
+        """ Interpolates magnetic field for given domain
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+           
+        NEEDS PROCESSED DATA MAGNETIC OBSERAVTORIES TO WORK
+        NR OF PROCESSORS IS SET AT 3, DUE TO COMPUTATIONAL LIMITS. NR CAN BE INCREASED AT OWN RISK
+        
+        Functions
+        ---------
+        magnetic_time(proc#,start,stop,location,string,localvar) : function that interpolates and write interpolated magnetic values to files per timestep
+        
+        Returns
+        -------
+        *csv and *csv.Y : csv files
+           interpolated magnetic signal over northwest Europe
+        """
         import logging
         import os
         import numpy as np
         import threading
         from multiprocessing import Process
-        from multiprocessing import Lock  
         localvar=threading.local()
-        lock=Lock()
         RE=6371000
         
         string=os.listdir(self.statpath)
@@ -1003,7 +1292,6 @@ class GIC:
         os.system(f'rm {self.respath}/{self.date}/temp.txt')
         print(string)
         
-        values=np.zeros((len(string),3))
         try:
             os.mkdir(f'{self.respath}/{self.date}/interpolation')
         except:
@@ -1021,7 +1309,36 @@ class GIC:
             thread.join()
         
     def magnetic_time(self,q,stepmin,stepmax,location,string,localvar):
-        import os
+        """ Calculated interpolated values and write them to files
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        q : integer (required)
+           processor number
+        stepmin : integer (required)
+           starting timestep
+        stepmax : integer (required)
+           ending timestep
+        location : numpy matrix (required)
+           (#stations,3) matrix containing latitude, longitude, and radius (of the Earth) per station
+        string : array of string (required)
+          path to folders of magnetic observatories
+        localvar : object (required)
+           object were every single processor can store its variables separately without mixing them up between processors
+        
+        NEEDS TO BE USED WITH FUNCTION magnetic_interpolation() TO WORK PROPERLY
+        
+        Functions
+        ---------
+        mag_interpolate(location,localvar.values,np.array([43,63,-13,20]),0.5) : function that carries out the actual interpolation per timestep
+        
+        Returns
+        -------
+        *csv and *csv.Y : csv files
+           interpolated magnetic signal over northwest Europe        
+        """
         import pandas as pd
         import numpy as np
         import logging
@@ -1029,7 +1346,6 @@ class GIC:
         logging.info(f'Thread {q} is running, starting at {stepmin}.')
         for counter3 in range(stepmin,stepmax): #minutes per day
             localvar.values=np.zeros((len(string),3))
-    #         with lock:
             logging.info(f'Thread {q} got a lock')
             for localvar.counter1,localvar.item in enumerate(string):
                 localvar.File=open(f'{localvar.item}/allresults.csv')
@@ -1066,6 +1382,33 @@ class GIC:
         logging.warning(f'Thread {q} has finished.')
             
     def mag_interpolate(self,loc,val,latlon,delta):
+        """ Interpolates magnetic data over northwestern European domain
+        
+        Parameters
+        ----------
+        loc : numpy matrix (required)
+           (#stations,3) matrix containing latitude, longitude, and radius (of the Earth) per station
+        val : numpy matrix (required)
+           (#stations,3) matrix containing radial, latitudonal, and longitudonal component of the magnetic field at a station for a specific timestep
+        latlon : numpy array (required)
+           area over which we want to interpolate the magnetic data, given as [minimum_latitude, maximum_latitude, minimum_longitude, maximum_longitude]
+        delta : float (required)
+           spacing of the area over which we want to interpolate; here 0.5 is a safe guess
+        
+        NEEDS TO BE USED WITH magnetic_time() TO WORK PROPERLY
+        
+        Functions
+        ---------
+        USES THE SPECIAL PACKAGE pySECS (class SECS); INSTALL BEFOREHAND!
+        SECS(location_of_poles) : initialise class
+        SECS.fit(loc,val) : scale poles to observed values (val) at given locations (loc) (upscaling)
+        SECS.predict(prediction_location, False) : project the scaled poles back to the whole domain (downscaling)
+        
+        Returns
+        -------
+        result : numpy array
+           (points in domain, 4) matrix contains latitude, longitude, interpolated northern component, interpolated eastern component for every point in the given domain per timestep
+        """
         import numpy as np
         from pySECS import SECS 
         
@@ -1518,6 +1861,7 @@ class GIC:
     
     def plottinglatlon(self,q,string,string2,start,end,path,lock,lock2):
         import logging
+        import os
         proj='-JM15C -P'
         lims1='-R0.7/9.6/49/58.3'
         lims2='-R3.3/9.6/49/54'
@@ -1533,7 +1877,7 @@ class GIC:
                 os.system(f'gmt xyz2grd {self.respath}/{self.date}/interpolation/{item} -G{self.respath}/{self.date}/interpolation/gridlat{nr}.grd -I0.05 -V -N0 {lims1}')
                 psfile1=f'{self.respath}/{self.date}/interpolation/minlat_{nr}.ps'
                 os.system(f'gmt pscoast {proj} {lims2} -W0.25p -Ggrey -Slightblue -N1/0.25p -Df -K> {psfile1}' )
-                os.system(f'gmt psbasemap {proj} {lims2} -Ba1 -BWeSn+t"Bx at {day2} -- {time1[0]}:{time1[1]}" -O -K>> {psfile1}' )
+                os.system(f'gmt psbasemap {proj} {lims2} -Ba1 -BWeSn+t"Bx at {self.date} -- {time1[0]}:{time1[1]}" -O -K>> {psfile1}' )
                 os.system(f'gmt grdcontour {self.respath}/{self.date}/interpolation/gridlat{nr}.grd -C10 -A50+f20p {proj} {lims2} -O >>{psfile1}')
                 logging.info(f'Thread {q} has released latlock.')
             os.system(f'convert -density 300 {psfile1} {self.respath}/{self.date}/interpolation/minlat_{nr}.png')
@@ -1553,7 +1897,7 @@ class GIC:
                 os.system(f'gmt xyz2grd {self.respath}/{self.date}/interpolation/{item} -G{self.respath}/{self.date}/interpolation/gridlon{nr}.grd -I0.05 -V -N0 {lims1}')
                 psfile2=f'{self.respath}/{self.date}/interpolation/minlon_{nr}.ps'
                 os.system(f'gmt pscoast {proj} {lims2} -W0.25p -Ggrey -Slightblue -N1/0.25p -Df -K> {psfile2}' )
-                os.system(f'gmt psbasemap {proj} {lims2} -Ba1 -BWeSn+t"By at {day2} -- {time2[0]}:{time2[1]}" -O -K>> {psfile2}' )
+                os.system(f'gmt psbasemap {proj} {lims2} -Ba1 -BWeSn+t"By at {self.date} -- {time2[0]}:{time2[1]}" -O -K>> {psfile2}' )
                 os.system(f'gmt grdcontour {self.respath}/{self.date}/interpolation/gridlon{nr}.grd -C10 -A50+f20p {proj} {lims2} -O >>{psfile2}')
                 logging.info(f'Thread {q} has released lonlock.')
             os.system(f'convert -density 300 {psfile2} {self.respath}/{self.date}/interpolation/minlon_{nr}.png')
@@ -1636,7 +1980,7 @@ class GIC:
         nrsteps=int(self.samples/n)
         threads=list()
         for index in range(n):
-            q=Process(target=self.plottinglatlon, args=(q,string, string2, nrsteps*index, nrsteps*(index+1),locl,lock2))
+            q=Process(target=self.plottinglatlon, args=(q,string, string2, nrsteps*index, nrsteps*(index+1),lock,lock2))
             threads.append(q)
             q.start()
         for thread in threads:
@@ -1654,21 +1998,24 @@ class GIC:
                 logging.warning(f'Data could not be downloaded for station {station}')
         if self.qdate==None:
             qday, qmonth, qyear = self.find_quiet_date()
-            qday=str(qday).zfill(2)
-            qmonth=str(qmonth).zfill(2)
             self.qdate=f'{qday}-{qmonth}-{qyear}'
-            logging.info(f'Quiet day is {self.qdate}')
-            print(f'Quiet day is {self.qdate}')
+        else:
+           quietday = self.qdate.split('-')
+           qday, qmonth, qyear = quietday[0], quietday[1], quietday[2]
+        qday=str(qday).zfill(2)
+        qmonth=str(qmonth).zfill(2)
+        logging.info(f'Quiet day is {self.qdate}')
+        print(f'Quiet day is {self.qdate}')
+        try:
+            self.quietpath=f'{self.base}/{self.qdate}'
+            os.mkdir(f'{self.base}/{self.qdate}')
+        except:
+            logging.warning(f"Directory '{self.quietpath}' might already exist, or cannot be formed")
+        for station in list_of_stations:
             try:
-                self.quietpath=f'{self.base}/{self.qdate}'
-                os.mkdir(f'{self.base}/{self.qdate}')
-                for station in list_of_stations:
-                    try:
-                        self.download_data(qday,qmonth,qyear,station,types)
-                    except:
-                        logging.warning(f'Data could not be downloaded for station {station}')
+                self.download_data(qday,qmonth,qyear,station,types)
             except:
-                logging.warning(f"Directory '{self.quietpath}' might already exist, or cannot be formed")
+                logging.warning(f'Data could not be downloaded for station {station}')
                 
     def transferfunction(self,freq,model=1): #Where B is given, NOT H!
         import numpy as np
