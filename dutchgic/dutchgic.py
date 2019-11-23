@@ -1467,14 +1467,63 @@ tralian region power network to space weather' (2011)
         return result
 
     def make_video(self,namein,nameout):
+        """ Creates mp4-video from png files
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        namein : string (required)
+           location + name of png file, without its timestamp number
+        nameout : string (required)
+           name of the created mp4-video
+           
+        Returns
+        -------
+        *.mp4 : mp4-video at '{self.respath}/{self.date}'
+        """
         import os
-        os.system(f'ffmpeg -framerate 24 -pattern_type glob -i "{namein}????.png" {self.respath}/{self.date}/{nameout}.mp4')
+        os.system(f'ffmpeg -framerate 24 -pattern_type glob -i "{namein}*.png" {self.respath}/{self.date}/{nameout}.mp4')
     
     def newplotspace(self,activeday,quietday,figures=False,plots=True):
+        """ Converts raw data to input data for interpolation by substracting quiet solar day from active day
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        activeday : string (required)
+           folder which contains the magnetic observations from the active solar day
+        quietday : string (required)
+           folder which contains the magnetic observations from the quiet solar day
+        figures : boolean (optional)
+           if True, figures are plot in the terminal
+        plots : boolean (optional)
+           if True, figures are created and placed in the appropriate station folder in '{self.respath}/{self.date}'
+        
+        Functions
+        ---------
+        CHAOSMAGPY PACKAGE IS NEEDED TO LET THIS FUNCTION WORK
+        
+        Created Folders
+        ---------------
+        '{self.respath}/{self.date}' : folder where all processed stations will be stored
+        '{self.respath}/{self.date}/{station}_{dates[0]}-{dates[1]}-{dates[2]}' : folder where all data of one station is stored
+        
+        Returns
+        -------
+        allresults.csv : csv file
+           storage of processed magnetic data per station; every row correponds to one timestep
+           file contains per column: B_theta, B_phi, B_r, B_H, dB_theta/dt, dB_phi/dt, dBH/dt
+        *.png : png file
+           various graphic overviews of the allresults.csv file
+        """
         #import needed packages
         import os
         import numpy as np
         import pandas as pd
+        import matplotlib
+        %matplotlib inline
         import matplotlib.pyplot as plt
         import re
         from chaosmagpy.data_utils import mjd2000
