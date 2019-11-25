@@ -1,6 +1,19 @@
 # GIC
 Calculation of geomagnetically induced currents in the Dutch powergrid. Details about the calculations can be found inside the code. The 'ods' and 'csv' files in the network folder contain the information about the Dutch (+German/Belgian) powergrid.
 
+## Install
+1. Clone the git repository
+
+    ```bash
+    > git clone https://github.com/outfrenk/Dutch_GIC
+    ```
+
+2. Build and install the package
+
+    ```bash
+    > python setup.py install
+    ```
+
 ## Example
 An example of how to run the code (dutchgic.py) can be found in the 'usage class GIC' jupyter notebook or for a complete jupyter notebook in 'Class_GIC_notebook.ipynb' in the notebooks folder. The logbook.log in the lobook folder contains details about running the code.
 
