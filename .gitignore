@@ -7,3 +7,6 @@
 *~
 # cache of python
 __pycache__
+# folders
+build/
+dist/
