@@ -2,7 +2,7 @@
 Calculation of geomagnetically induced currents in the Dutch powergrid. Details about the calculations can be found inside the code
 
 ## Dependencies external
-This class depends on a couple of external packages:
+This class depends on a couple of packages:
 - numpy
 - re
 - os
