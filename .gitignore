@@ -10,3 +10,4 @@ __pycache__
 # folders
 build/
 dist/
+dutchgic.py.egg-info/
