@@ -1,5 +1,9 @@
-
 *.txt
 *.cpt
 *.history
 .ipynb_checkpoints
+.directory
+# emacs
+*~
+# cache of python
+__pycache__
