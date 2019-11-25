@@ -551,7 +551,7 @@ class GIC:
            if True, data is recorded per minute; if False, data is recorded per second        
         """
         import os
-        self.samples=len([name for name in os.listdir(f'{self.respath}/{self.date}/interpolation') if os.path.isfile(os.path.join(f'{self.respath}/{self.date}/interpolation', name))])/2
+        self.samples=len([name for name in os.listdir(f'{self.respath}/{self.date}/interpolation') if os.path.isfile(os.path.join(f'{self.respath}/{self.date}/interpolation', name))])/2 #count amount of files in folder
         if self.samples%(24*60*60)==0:
             self.minute=False 
             self.days=int(self.samples/(24*60*60))
@@ -683,7 +683,7 @@ class GIC:
                 urlretrieve(f'{URL}/qd{self.year[0:3]}0{self.year[2]}x.txt', f'{self.base}/Kp_index_{self.year}.txt')
             except:
                 raise Exception('URL could not be retrieved, check your date string!')
-        # find correct files and extract quiet days of the month
+        # find correct files on potzdam website and extract quiet days of the month for variety of situations
         if self.month=='12' and self.year[3]=='9':
             newyear=str(int(self.year)+1)
             try:
@@ -980,8 +980,8 @@ class GIC:
         logging.info(f'Thread {q} is finished!')
     
     def GIC_index(self,overwrite=False):
-        """ Calculates the GIC index for all given magnetic station observatories according to Marshall et al.'s 'A preliminary risk assessment of the Aus-
-tralian region power network to space weather' (2011)
+        """ Calculates the GIC index for all given magnetic station observatories according to 
+        Marshall et al.'s 'A preliminary risk assessment of the Australian region power network to space weather' (2011)
 
         Parameters
         ----------
@@ -1154,7 +1154,7 @@ tralian region power network to space weather' (2011)
             else:
                 pass
         test=str(self.samples*len(paths))
-        fill=len(test)
+        fill=len(test) #get length of number string
         try:
             os.mkdir(f'{self.respath}/{foldername}')
         except:
@@ -1163,7 +1163,7 @@ tralian region power network to space weather' (2011)
             os.mkdir(f'{self.respath}/{foldername}/interpolation')
         except:
             logging.warning(f'Directory "{self.respath}/{foldername}/interpolation" is already created, data could be lost forever!')
-        
+        #give files new numbering
         if self.minute:
             for counter,item in enumerate(paths):
                 for nr in range(int(self.samples)):
@@ -1205,15 +1205,13 @@ tralian region power network to space weather' (2011)
             os.system(f'ffmpeg -f concat -safe 0 -i {gluefile} -c copy {self.respath}/{nameout}.mp4')
         # gluefile should have lines like: file '/usr/people/out/Documents/Magnetic_field/station_results/31-10-2003/GIC.mp4'
         
-    def iteratestation(self,figures=False,plots=True):
+    def iteratestation(self,plots=True):
         """ Iterate the function newplotspace for multiple magnetic observatories
         
         Parameters
         ----------
         self :  boolean, integer, or string (required)
            necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
-        figures : boolean (optional)
-           if True, figures are opened in the terminal
         plots : boolean (optional)
            if True, plots of mangetic signal are generated and placed in a folder
         
@@ -1221,7 +1219,7 @@ tralian region power network to space weather' (2011)
         
         Functions
         ---------
-        newplotspace(stringactive,stringquiet,figures,plots) : function that extract magnetic data and returns reduced magnetic signal by subtracting quiet day from active day
+        newplotspace(stringactive,stringquiet,plots) : function that extract magnetic data and returns reduced magnetic signal by subtracting quiet day from active day
         """
         import os
         string=os.listdir(self.statpath)
@@ -1231,7 +1229,7 @@ tralian region power network to space weather' (2011)
         if len(string)!=len(stringquiet):
             raise Exception(f'Quiet and active days should have the same stations, now there are {len(stringquiet)} quiet stations and {len(string)} active stations!')
         for counter,item in enumerate(string):
-            self.newplotspace(string[counter],stringquiet[counter],figures=False,plots=True)
+            self.newplotspace(string[counter],stringquiet[counter],plots=True)
      
     def magnetic_interpolation(self):
         """ Interpolates magnetic field for given domain
@@ -1485,7 +1483,7 @@ tralian region power network to space weather' (2011)
         import os
         os.system(f'ffmpeg -framerate 24 -pattern_type glob -i "{namein}*.png" {self.respath}/{self.date}/{nameout}.mp4')
     
-    def newplotspace(self,activeday,quietday,figures=False,plots=True):
+    def newplotspace(self,activeday,quietday,plots=True):
         """ Converts raw data to input data for interpolation by substracting quiet solar day from active day
         
         Parameters
@@ -1496,14 +1494,8 @@ tralian region power network to space weather' (2011)
            folder which contains the magnetic observations from the active solar day
         quietday : string (required)
            folder which contains the magnetic observations from the quiet solar day
-        figures : boolean (optional)
-           if True, figures are plot in the terminal
         plots : boolean (optional)
            if True, figures are created and placed in the appropriate station folder in '{self.respath}/{self.date}'
-        
-        Functions
-        ---------
-        CHAOSMAGPY PACKAGE IS NEEDED TO LET THIS FUNCTION WORK
         
         Created Folders
         ---------------
@@ -1522,11 +1514,8 @@ tralian region power network to space weather' (2011)
         import os
         import numpy as np
         import pandas as pd
-        import matplotlib
-        %matplotlib inline
         import matplotlib.pyplot as plt
         import re
-        from chaosmagpy.data_utils import mjd2000
         possible_characters = ('-', ' ')
     ##### calculate values from observation station #####
         # read-in file of station
@@ -1553,12 +1542,6 @@ tralian region power network to space weather' (2011)
             if counter==2:
                 words=line.split()
                 station=words[2]
-            if counter==4:
-                words=line.split()
-                lat=float(words[2]) # latitude station
-            if counter==5:
-                words=line.split()
-                lon=float(words[2]) # longitude station
                 
             if counter>=datastart-1: #read when the data starts
                 words=line.split()
@@ -1638,12 +1621,6 @@ tralian region power network to space weather' (2011)
             if counter==2:
                 words=line.split()
                 station=words[2]
-            if counter==4:
-                words=line.split()
-                lat=float(words[2]) # latitude station
-            if counter==5:
-                words=line.split()
-                lon=float(words[2]) # longitude station
             if counter>=datastart-1: #read when the data starts
                 N+=1
                 if counter==datastart-1:
@@ -1696,16 +1673,8 @@ tralian region power network to space weather' (2011)
             Z1=VertZ
     ##### calculate model value of magnetic field #####
         # set up
-        if int(dates[2])==31:
-            if int(dates[1])==12:
-                time = np.linspace(mjd2000(int(dates[0]),int(dates[1]),int(dates[2])), 
-                                   mjd2000(int(dates[0])+1,1,1), num=N)
-            else:
-                time = np.linspace(mjd2000(int(dates[0]),int(dates[1]),int(dates[2])), 
-                                   mjd2000(int(dates[0]),int(dates[1])+1,1), num=N)
-        else:
-            time = np.linspace(mjd2000(int(dates[0]),int(dates[1]),int(dates[2])),
-                               mjd2000(int(dates[0]),int(dates[1]),int(dates[2])+1), num=N)
+        time = np.linspace(0,24,N)
+
 
     ##### subtract the two data sets! #####
         SpaceX=np.subtract(X1,X2)
@@ -1713,50 +1682,6 @@ tralian region power network to space weather' (2011)
         SpaceZ=np.subtract(Z1,Z2)
 
     ##### plot data #####
-        if figures:
-            figx=plt.figure(figsize=(20,10))
-            ax1=figx.add_subplot(311)
-            ax11=figx.add_subplot(312)
-            ax12=figx.add_subplot(313)
-            ax1.set_title('$B_\\theta$ at '+ station + ' on ' + dates[0] + '-' + dates[1] + '-' + dates[2])
-            ax12.set_xlabel('time (days after 1 jan 2000)')
-            ax11.set_ylabel('$B_\\theta$ (nt)')
-            ax11.plot(time,X1,label='observed',color='blue')
-            ax12.plot(time,X2,label='model',color='green')
-            ax1.plot(time,SpaceX,label='residue',color='red')
-            ax1.legend()
-            ax11.legend()
-            ax12.legend()
-
-            figy=plt.figure(figsize=(20,10))
-            ax2=figy.add_subplot(311)
-            ax21=figy.add_subplot(312)
-            ax22=figy.add_subplot(313)
-            ax2.set_title('$B_\\phi$ at '+ station + ' on ' + dates[0] + '-' + dates[1] + '-' + dates[2])
-            ax22.set_xlabel('time (days after 1 jan 2000)')
-            ax21.set_ylabel('$B_\\phi$ (nt)')
-            ax21.plot(time,Y1,label='total',color='blue')
-            ax22.plot(time,Y2,label='model',color='green')
-            ax2.plot(time,SpaceY,label='residue',color='red')
-            ax2.legend()
-            ax21.legend()
-            ax22.legend()
-
-            figz=plt.figure(figsize=(20,10))
-            ax3=figz.add_subplot(311)
-            ax31=figz.add_subplot(312)
-            ax32=figz.add_subplot(313)
-            ax3.set_title('$B_r$ at '+ station + ' on ' + dates[0] + '-' + dates[1] + '-' + dates[2])
-            ax32.set_xlabel('time (days after 1 jan 2000)')
-            ax31.set_ylabel('$B_r$ (nt)')
-            ax31.plot(time,Z1,label='total',color='blue')
-            ax32.plot(time,Z2,label='model',color='green')
-            ax3.plot(time,SpaceZ,label='residue',color='red')
-            ax3.legend()
-            ax31.legend()
-            ax32.legend()
-            plt.show()
-
         if plots:
             figall=plt.figure(figsize=(20,10))
             ax4=figall.add_subplot(311)
@@ -1840,9 +1765,50 @@ tralian region power network to space weather' (2011)
         plt.close('all')
 
     def ObtainJ(self,q,kabels,EX_matrix,EY_matrix,lat,lon,time,trafo_connect,trafo_all_connections,trafo_cond,trafo,guess,localvar):
+        """ Calculates the induced current in the cables and 'sums' them together per transformerstation
+        
+        Parameters
+        ----------
+        q : integer (required)
+           processor number
+        kabels : pandas dataframe (required)
+           contains information about the transmission cables, see spreadsheetcables.ods for clarification
+        EX_matrix : numpy matrix (required)
+           electric field in northern direction stored in a (tsteps,npts) matrix. tsteps are the amount of timesteps, npts are the number of spatial points for which the electric field is calculated
+        EY_matrix : numpy matrix (required)
+           electric field in eastern direction stored in a (tsteps,npts) matrix. tsteps are the amount of timesteps, npts are the number of spatial points for which the electric field is calculated
+        lat : numpy array (required)
+           latitude of spatial points where electric field is calculated
+        lon : numpy array (required)
+           longitude of spatial points where electric field is calculated
+        time : integer (required)
+           timestep for which the integration has to be carried out
+        trafo_connect : boolean numpy matrix (required)
+           symmetric matrix (len(trafo),len(trafo)) that determines whether tranformers are directly connected to each other (=True) or not (=False)
+        trafo_cond : numpy matrix (required)
+           conductivity matrix as defined by Boteler & Pirjola's 'Modeling geomagnetically induced currents' (2017)
+        trafo : pandas dataframe (required)
+           dataframe containing information about the transformers, see spreadsheettrafo.ods for clarification
+        guess : integer (required)
+           initial amount of integration intervals to calculate the electric potential
+        localvar : object (required)
+           object were every single processor can store its variables separately without mixing them up between processors
+        
+        NEEDS TO BE USED WITH GICfunction() TO WORK PROPERLY
+        
+        Functions
+        ---------
+        calcE(kabels,EX_matrix,EY_matrix,lat,lon,time,guess,localvar) : calculates the electric potential per transmission cable
+        
+        Returns
+        -------
+        localvar.J_north : numpy array
+           contains the sum of all northern directed induced currents per transformer station
+        localvar.J_east :  numpy array
+           contains the sum of all eastern directed induced currents per transformer station
+        """
         import numpy as np
         import logging
-        import pandas as pd
         
         localvar.cablecheck=np.zeros(len(kabels))
         localvar.E_kabels=np.zeros((len(kabels),2))      
@@ -1902,13 +1868,51 @@ tralian region power network to space weather' (2011)
         return localvar.J_north, localvar.J_east
     
     def Parzen(self,N):
+        """ Creates a Parzen window/filter for inputted length
+        
+        Parameters
+        ----------
+        N : integer (required)
+           sets length of Parzen window
+           
+        Returns
+        -------
+        W : numpy array
+           the Parzen filter to be applied to the data with length N
+        """
         import numpy as np
         W=np.zeros(N)
         for nr in range(N):
             W[nr]=1-(2*(nr-N/2)/N)**8
         return W
     
-    def plottinglatlon(self,q,string,string2,start,end,path,lock,lock2):
+    def plottinglatlon(self,q,string,string2,start,end,lock,lock2):
+        """ Optional plotting of the magnetic interpolated values over Dutch powergrid
+        
+        Parameters
+        ----------
+        q : integer (required)
+           processor number
+        string : list of strings (required)
+           list to location of northward directed mangetic values
+        string2 : list of strings (required)
+           list to location of eastward directed mangetic values
+        start : integer (required)
+           starting timestep 
+        end : integer (required)
+           ending timestep
+        lock : object (required)
+           locks a piece of code for other processors when one processor is working on it
+        lock2 : object (required)
+           locks a piece of code for other processors when one processor is working on it
+        
+        NEEDS TO BE USED WITH plot_magnetic() TO WORK PROPERLY
+        
+        Returns
+        -------
+        minlat_*.png : png files
+           visual representation of magnetic contourlines over the Dutch (and surrounding) area
+        """
         import logging
         import os
         proj='-JM15C -P'
@@ -1955,6 +1959,26 @@ tralian region power network to space weather' (2011)
             logging.info(f'Thread {q} has finished plotting lon for step {nr}.')
         
     def plot_GIC(self,stationlist=None):
+        """ Gives a visual representation of GIC per transformer over time
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        stationlist : list of integers (optional)
+           this list of numbers represents the transformer stations we want to use for our visualisation
+        
+        NEEDS GIC_*.csv FILES TO FUNCTION. GIC_*.csv FILES ARE OBTAINED IN calculate_GIC()
+        
+        Functions
+        ---------
+        check_sampling() : obtain amount of samples, minute or second data, and amount of days from magnetic data
+        
+        Returns
+        -------
+        GIC_allstations.png : png file
+           a visual representation of GIC per transformer over time
+        """
         # plot timelapse GIC
         import matplotlib.pyplot as plt
         import os
@@ -1990,7 +2014,7 @@ tralian region power network to space weather' (2011)
         os.system(f'rm {self.respath}/{self.date}/temp.txt')
 
         stationframe=pd.read_csv(f'{self.netpath}/spreadsheettrafo.csv', delimiter=';')
-
+        # plot it, per station
         plt.rcParams.update({'font.size': 14}) 
         timevector=np.linspace(0,24*self.days,self.samples*self.days)
         fig1=plt.figure(figsize=(20,15))
@@ -2005,6 +2029,22 @@ tralian region power network to space weather' (2011)
         plt.savefig(f'{self.respath}/{self.date}/GIC_allstations.png', bbox_extra_artists=(lgd,), bbox_inches='tight')
             
     def plot_magnetic(self):
+        """ Plots interpolated magnetic data as contour lines over the Dutch (and surrounding area)
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        
+        Functions
+        ---------
+        plottinglatlon(q,string,string2,start,end,lock,lock2) : plots the magnetic data using gmt tools
+        
+        Returns
+        -------
+        minlat_*.png : png files
+           visual representation of magnetic contourlines over the Dutch (and surrounding) area
+        """
         from multiprocessing import Process
         import os
         from multiprocessing import Lock
@@ -2012,8 +2052,6 @@ tralian region power network to space weather' (2011)
         self.check_sampling()
         lock=Lock()
         lock2=Lock()
-
-        logging.basicConfig(filename=f'{self.respath}/{self.date}/logbookplot.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
 
         thing=os.listdir(f'{self.respath}/{self.date}/interpolation')
         string=[]
@@ -2036,23 +2074,52 @@ tralian region power network to space weather' (2011)
             thread.join()
         logging.info('Plotting completed!')
         
-    def standard_download(self,types=True): #download data automatic from intermagnet
+    def standard_download(self,list_of_stations=None,types=True): 
+        """ Downloads data automatically for a range of stations from intermagnet
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        list_of_stations : list of strings (optional)
+           contains the IAGA abbreviation of the stations whose data is to be downloaded
+        types : boolean (optional)
+           if True, minute data is to be downloaded (not available before 1991); if False, second data is to be downloaded (not available before 2011)
+           
+        Functions
+        ---------
+        download_data(day,month,year,station,types) : downloads data from the intermagnet ftp server
+        find_quiet_date() : finds the solar quiet day which is nearest to the inputted solar 'active' date
+        
+        Created Folders
+        ---------------
+        '{self.base}/{self.qdate}' : folder where station data of the nearest solar quiet day is stored
+        
+        Returns
+        -------
+        *dmin.min or *qsec.sec : text files
+           header information and magnetic observations for one day
+        """
         import logging
         import os
-        list_of_stations=['fur','had','bfe','clf','dou','esk','ler','ngk','ups','wng']
+        if list_of_stations==None:
+            list_of_stations=['fur','had','bfe','clf','dou','esk','ler','ngk','ups','wng']
         for station in list_of_stations:
             try:
-                self.download_data(self.day,self.month,self.year,station,types)
+                self.download_data(self.day,self.month,self.year,station,types) #download data
             except:
                 logging.warning(f'Data could not be downloaded for station {station}')
         if self.qdate==None:
-            qday, qmonth, qyear = self.find_quiet_date()
+            qday, qmonth, qyear = self.find_quiet_date() #find the nearest quiet solar day
+            qday=str(qday).zfill(2)
+            qmonth=str(qmonth).zfill(2)
             self.qdate=f'{qday}-{qmonth}-{qyear}'
         else:
            quietday = self.qdate.split('-')
            qday, qmonth, qyear = quietday[0], quietday[1], quietday[2]
-        qday=str(qday).zfill(2)
-        qmonth=str(qmonth).zfill(2)
+           qday=str(qday).zfill(2)
+           qmonth=str(qmonth).zfill(2)
+           self.qdate=f'{qday}-{qmonth}-{qyear}'
         logging.info(f'Quiet day is {self.qdate}')
         print(f'Quiet day is {self.qdate}')
         try:
@@ -2062,11 +2129,29 @@ tralian region power network to space weather' (2011)
             logging.warning(f"Directory '{self.quietpath}' might already exist, or cannot be formed")
         for station in list_of_stations:
             try:
-                self.download_data(qday,qmonth,qyear,station,types)
+                self.download_data(qday,qmonth,qyear,station,types) #download quiet data
             except:
                 logging.warning(f'Data could not be downloaded for station {station}')
                 
-    def transferfunction(self,freq,model=1): #Where B is given, NOT H!
+    def transferfunction(self,freq,model=7): 
+        """ Generates the transferfunction to calculate the electric field from a given magnetic field
+        NB. Where B is given, NOT H!
+        
+        Parameters
+        ----------
+        freq : float (required)
+           frequency of signal
+        model : integer (optional)
+           modelnumber of the conductivitymodel that will be used (see code)
+        
+        NEEDS TO BE USED WITH BtoE() TO WORK PROPERLY
+        
+        Returns
+        -------
+        Zn/mu : complex float
+           (complex) number that relates the magnetic field (B) to the electric field (E).
+           Therefore we divided by mu (=mu0, magnetic permeability in vacuum)
+        """
         import numpy as np
         mu=4*np.pi*10**(-7)
         if freq<=0:
@@ -2125,21 +2210,86 @@ tralian region power network to space weather' (2011)
 
 ######################## writing results ###########################################
     def writing_electric(self,thread,path,Electric,begin,end,lon,lat,localvar):
+        """ Writes the electric field to separate files, depending on direction
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        thread : integer (required)
+           processor number
+        path : string (required)
+           location where files should be written towards
+        Electric : numpy matrix (required)
+           (tstep,npts) matrix that contains the electric field in a specific direction for npts points during tstep time
+        begin : integer (required)
+           beginstep in time
+        end : integer (required)
+           endstep in time
+        lon : numpy array (required)
+           longitude of spatial points where electric field is calculated
+        lat : numpy array (required)
+           latitude of spatial points where electric field is calculated
+        localvar : object (required)
+           object were every single processor can store its variables separately without mixing them up between processors
+        
+        NEEDS TO BE USED WITH BtoE() TO WORK PROPERLY
+        
+        Returns
+        -------
+        electric_*.csv : csv file
+           contains the electric field per timestep for all points in the given domain;
+           is in either northern or eastern direction
+        """
         import logging
         import pandas as pd
+        #reading files and writing to pandas
         for localvar.item in range(begin,end):
             logging.info(f'Thread {thread} is writing step {localvar.item}.')
             localvar.newfile=pd.DataFrame(columns=['lon','lat','value'])
             localvar.newfile.at[:,'lon']=lon
             localvar.newfile.at[:,'lat']=lat
             localvar.newfile.at[:,'value']=Electric[localvar.item,:]
-            
+            #write files
             if self.minute:
                 localvar.newfile.to_csv(path_or_buf=f'{path}/electric_{str(localvar.item).zfill(4)}.csv', sep=' ', index=False, header=False)
             else:
                 localvar.newfile.to_csv(path_or_buf=f'{path}/electric_{str(localvar.item).zfill(5)}.csv', sep=' ', index=False, header=False)
         
     def runall(self,model=7,guess=80,plotgic=True):
+        """ Runs all necessary functions to obtain results from scratch 
+        takes for one day and minute data about 1.5 hour with standard parameters
+        also starts up a logbook to log all processes
+        
+        Parameters
+        ----------
+        self :  boolean, integer, or string (required)
+           necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        model : integer (optional)
+           selects which conductivity model is to be used for the transferfunction
+        guess : integer (optional)
+           gives an estimation in how many pieces the integration of the electric field should be executed in the calcE function. Standard set at 80.
+        plotgic : boolean (optional)
+           if True, png figures of GIC in the powergrid are plotted per timestep, also a video of these images is generated
+        
+        Functions
+        ---------
+        standard_download() : downloads for a range of stations magnetic data from intermagnet for both active and quiet solar day
+        iteratestation() : calculates the resulting magnetic field by subtracting the quiet day from the active day
+        magnetic_interpolation() : interpolates the magnetic field for the given domain
+        BtoE(model) : transfers the magnetic field into an electric field using a given conductivity model
+        calculate_GIC(guess) : calculates GICs in the powergrid and produces *.png files
+        plot_GIC() : plot GICs as a function of time per Dutch transformer station
+        make_video(namein,nameout) : makes a video of generated *.png files
+        
+        Created folders
+        ---------------
+        many folders : see other functions
+        
+        Returns
+        -------
+        much : see other functions
+        """
         import logging
         logging.basicConfig(filename=f'{self.respath}/logbook.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
         logging.info('Script starting')
