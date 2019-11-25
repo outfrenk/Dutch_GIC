@@ -1,5 +1,5 @@
 # GIC
-Calculation of geomagnetically induced currents in the Dutch powergrid. Details about the calculations can be found inside the code
+Calculation of geomagnetically induced currents in the Dutch powergrid. Details about the calculations can be found inside the code. The 'ods' and 'csv' files contain the information about the Dutch (+German/Belgian) powergrid.
 
 ## Example
 An example of how to run the code (dutchgic.py) can be found in the 'usage class GIC' jupyter notebook or for a complete jupyter notebook in 'Class_GIC_notebook.ipynb'. The logbook.log contains details about running the code.
