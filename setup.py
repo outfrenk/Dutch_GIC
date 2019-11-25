@@ -8,7 +8,8 @@ setup(name='dutchgic.py',
       author_email='outfrenk@gmail.com',
       license='MIT',
       packages=['Dutch_GIC'],
-      install_requires=['numpy','re','pandas','logging','multiprocessing','threading','scipy','urllib','datetime','matplotlib'],
+      install_requires=['pandas','numpy','scipy','matplotlib'],
       zip_safe=False)
+
 os.system('git clone https://github.com/greglucas/pySECS')
 os.system('python setup.py install')
