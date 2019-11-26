@@ -8,8 +8,10 @@ setup(name='dutchgic.py',
       author_email='outfrenk@gmail.com',
       license='MIT',
       packages=['Dutch_GIC'],
-      install_requires=['pandas','numpy','scipy','matplotlib'],
+      install_requires=['pandas','numpy','scipy','matplotlib','pytest'],
       zip_safe=False)
-
-os.system('git clone https://github.com/greglucas/pySECS')
-os.system('python setup.py install')
+try:
+    os.system('git clone https://github.com/greglucas/pySECS')
+    os.system('python pySECS/setup.py install')
+except:
+    print('pySECS could not be installed')
