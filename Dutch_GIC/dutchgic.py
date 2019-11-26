@@ -414,7 +414,7 @@ class GIC:
             trafo_icon[line]=trafo.at[line,'trafonr']
         ##### make trafo-trafo connectivity matrix ######
         for line in range(len(trafo)): 
-            temp=trafo.at[line,'verbonden trafo'] #get right column
+            temp=str(trafo.at[line,'verbonden trafo']) #get right column
             temp=temp.split(",") #split values
 
             for item in temp:
@@ -424,7 +424,7 @@ class GIC:
             del temp
         ###### make trafo-cable connectivity matrix ######
         for line in range(len(trafo)):
-            temp=trafo.at[line,'alle aansluitingen']
+            temp=str(trafo.at[line,'alle aansluitingen'])
             temp=temp.split(",")
             for item in temp:
                 temp2=int(item)
