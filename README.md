@@ -14,7 +14,7 @@ Calculation of geomagnetically induced currents in the Dutch powergrid. Details 
     > python setupGIC.py install
     ```
 
-## data
+## Data
 The raw data used during research can also be found in the data folder
 
 ## Example
