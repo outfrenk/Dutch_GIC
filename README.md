@@ -11,11 +11,22 @@ Calculation of geomagnetically induced currents in the Dutch powergrid. Details 
 2. Build and install the package
 
     ```bash
-    > python setup.py install
+    > python setupGIC.py install
     ```
 
+## data
+The raw data used during research can also be found in the data folder
+
 ## Example
-An example of how to run the code (dutchgic.py) can be found in the 'usage class GIC' jupyter notebook or for a complete jupyter notebook in 'Class_GIC_notebook.ipynb' in the notebooks folder. The logbook.log in the lobook folder contains details about running the code.
+An example of how to run the code (dutchgic.py) can be found in the 'usage class GIC' jupyter notebook or for a complete jupyter notebook in 'Class_GIC_notebook.ipynb' in the notebooks folder. The logbook.log in the logbook folder contains details about running the code.
+
+## Testing
+You can test the code using pytest as well. However, change the string in test_code.py in the tests folder (in function test_init()) to the location where you store your csv files (spreadsheetcables.csv and spreadsheettrafo.csv) before running.
+Then run
+
+    ```bash
+    > pytest
+    ```
 
 ## Dependencies external
 This class depends on a couple of packages:
