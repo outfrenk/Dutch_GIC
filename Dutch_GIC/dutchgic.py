@@ -717,7 +717,7 @@ class GIC:
                     os.system(f'rm {self.base}/Kp_index_{newyear}.txt')
                     break
             
-        elif self.month=='01' and self.year[3]=='0':
+        elif str(self.month).zfill(2)=='01' and self.year[3]=='0':
             newyear=str(int(self.year)-1)
             try:
                 urlretrieve(f'{URL}/qd{newyear[0:3]}0{newyear[2]}9.txt', f'{self.base}/Kp_index_{newyear}.txt')
@@ -728,7 +728,7 @@ class GIC:
                     raise Exception('URL could not be retrieved, check your date string!')
             f=open(f'{self.base}/Kp_index_{newyear}.txt')
             for counter,line in enumerate(f):
-                if counter==130:
+                if counter==142:
                     words=line.split()
                     option0=[''.join(i for i in words[2] if i.isdigit()), 12, int(self.year)-1]
                     option0A=[''.join(i for i in words[3] if i.isdigit()), 12, int(self.year)-1]
@@ -771,7 +771,7 @@ class GIC:
                         f.close()
                         os.system(f'rm {self.base}/Kp_index_{self.year}.txt')
                         break
-                elif self.month=='1':
+                elif str(self.month).zfill(2)=='01':
                     if counter==(int(self.year)-int(self.year[0:3])*10)*14+2:
                         words=line.split()
                         option0=[''.join(i for i in words[2] if i.isdigit()), 12, int(self.year)-1]
