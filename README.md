@@ -22,11 +22,12 @@ An example of how to run the code (dutchgic.py) can be found in the 'usage class
 
 ## Testing
 You can test the code using pytest as well. However, change the string in test_code.py in the tests folder (in function test_init()) to the location where you store your csv files (spreadsheetcables.csv and spreadsheettrafo.csv) before running.
-Then run
+* Then run
 
     ```bash
     > pytest
     ```
+
 
 ## Dependencies external
 This class depends on a couple of packages:
