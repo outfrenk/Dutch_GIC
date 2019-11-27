@@ -59,9 +59,9 @@ class GIC:
         if not date == None:
             try:
                 datesplit=self.date.split('-')
-                self.day=datesplit[0]
-                self.month=datesplit[1]
-                self.year=datesplit[2]
+                self.day=str(datesplit[0]).zfill(2)
+                self.month=str(datesplit[1]).zfill(2)
+                self.year=str(datesplit[2])
                 self.datevar=f'{self.year}-{self.month}-{self.day}' #get day string in reverse order, so yyyy-mm-dd
             except:
                 logging.warning('Date has not been inputted correctly, it should be dd-mm-yyyy')
