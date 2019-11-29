@@ -466,7 +466,6 @@ class GIC:
             thread.join()
         logging.info("Script has been completed!")
         print("Script has been completed!")
-        logging.shutdown()
         
     def calcE(self,kabels,EX_matrix,EY_matrix,lat,lon,time,guess,localvar): #E for all cables
         """ Integrates the electric field over the given cables to obtain potentials
@@ -563,7 +562,7 @@ class GIC:
         else:
             raise Exception("Data is missing, or it is no minute or second data")
     
-    def download_data(self,day,month,year,station,types=True):
+    def download_data(self,day,month,year,station,types=True,force_download=False):
         """ Automatically downloads magnetic data from the Intermagnet ftp server
            ('ftp://ftp.seismo.nrcan.gc.ca/intermagnet')
         
@@ -581,6 +580,8 @@ class GIC:
            abbreviation of magnetic observatory in IAGA code
         types : boolean (optional)
            if True, minute data is to be downloaded (not available before 1991); if False, second data is to be downloaded (not available before 2011)
+        force_download : boolean (optional)
+           if True, magnetic data is downloaded even if it already exist   
            
         Created Folders
         ---------------
@@ -601,7 +602,7 @@ class GIC:
         except:
             logging.warning(f"Directory '{self.base}/{day}-{month}-{year}' might already exist, or cannot be formed")
         logging.info(f'Downloading data for station {station} on {day}-{month}-{year}')
-        if types==True: #minute data
+        if types==True and (os.path.exists(f'{self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min')==False or force_download==True) : #minute data
             URL="ftp://ftp.seismo.nrcan.gc.ca/intermagnet/minute/definitive/IAGA2002"
             try:
                 urlretrieve(f'{URL}/{year}/{month}/{station}{year}{month}{day}dmin.min.gz', f'{self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min.gz')
@@ -610,7 +611,7 @@ class GIC:
             os.system(f'gunzip {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min.gz')
             os.system(f'rm {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min.gz')
             
-        else: #second data
+        elif types==False and (os.path.exists(f'{self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec')==False or force_download==True) : #second data
             URL="ftp://ftp.seismo.nrcan.gc.ca/intermagnet/second/quasi-definitive/IAGA2002"
             try:
                 urlretrieve(f'{URL}/{year}/{month}/{station}{year}{month}{day}qsec.sec.gz', f'{self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz')
@@ -618,7 +619,10 @@ class GIC:
                 raise Exception('Data does not exist for given input, station might not be recorded yet. Input should have length: 3-2-2-4')
             os.system(f'gunzip {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz') 
             os.system(f'rm {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz') 
-
+        else:
+            logging.warning(f'No data for station {station} on {day}-{month}-{year} has been downloaded. The data already exist!')
+            return False
+        
     def filt(self,x,ft_matrix): 
         """ Applies Wiener filter to given data to remove noise
         
@@ -643,8 +647,8 @@ class GIC:
         signal=np.zeros((len(ft_matrix),len(ft_matrix[0])), dtype='complex')
         n=len(x)
         
-        PSD=2*np.sum(abs(ft_matrix), axis=1)/len(ft_matrix) #create mean power spectrum density
-        a,sigma=curve_fit(self.func, x[2*int(n/3):], 2*np.sum(abs(ft_matrix[2*int(n/3):]), axis=1)/len(ft_matrix)) #fit a exp line to end graph
+        PSD=2*np.nansum(abs(ft_matrix), axis=1)/len(ft_matrix) #create mean power spectrum density
+        a,sigma=curve_fit(self.func, x[2*int(n/3):], 2*np.nansum(abs(ft_matrix[2*int(n/3):]), axis=1)/len(ft_matrix)) #fit a exp line to end graph
         Wiener=(PSD-self.func(x,*a))/PSD #create filter
         for i in range(len(ft_matrix[0])):
             signal[:,i]=ft_matrix[:,i]*Wiener #apply filter
@@ -1141,7 +1145,7 @@ class GIC:
         logging.warning(f'Look Out! self.date is now changed from {self.date} to {foldername}!')
         self.date=foldername
         for path in paths:
-            if self.samples==None:
+            if self.samples==0:
                 self.samples=len([name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))])/2 #both x and y files
                 if self.samples==24*60:
                     self.minute=True
@@ -1149,11 +1153,11 @@ class GIC:
                     self.minute=False
                 else:
                     raise Exception("Folders do not contain minute or second data, or data is missing!")
-            elif self.samples!=None and self.samples!=len([name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))])/2:
+            elif self.samples!=0 and self.samples!=int(len([name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))])/2):
                 raise Exception("Folders contain different amount of files!")
             else:
                 pass
-        test=str(self.samples*len(paths))
+        test=str(int(self.samples*len(paths)))
         fill=len(test) #get length of number string
         try:
             os.mkdir(f'{self.respath}/{foldername}')
@@ -1167,13 +1171,13 @@ class GIC:
         if self.minute:
             for counter,item in enumerate(paths):
                 for nr in range(int(self.samples)):
-                    os.system(f'cp {item}/minute_{str(nr).zfill(4)}.csv {self.respath}/{foldername}/interpolation/minute_{str(nr+counter*self.samples).zfill(fill)}.csv')
-                    os.system(f'cp {item}/minute_{str(nr).zfill(4)}.csv.Y {self.respath}/{foldername}/interpolation/minute_{str(nr+counter*self.samples).zfill(fill)}.csv.Y')
+                    os.system(f'cp {item}/minute_{str(nr).zfill(4)}.csv {self.respath}/{foldername}/interpolation/minute_{str(int(nr+counter*self.samples)).zfill(fill)}.csv')
+                    os.system(f'cp {item}/minute_{str(nr).zfill(4)}.csv.Y {self.respath}/{foldername}/interpolation/minute_{str(int(nr+counter*self.samples)).zfill(fill)}.csv.Y')
         else:
             for counter,item in enumerate(paths):
                 for nr in range(int(self.samples)):
-                    os.system(f'cp {item}/second_{str(nr).zfill(5)}.csv {self.respath}/{foldername}/interpolation/second_{str(nr+counter*self.samples).zfill(fill)}.csv')
-                    os.system(f'cp {item}/second_{str(nr).zfill(5)}.csv.Y {self.respath}/{foldername}/interpolation/second_{str(nr+counter*self.samples).zfill(fill)}.csv.Y')
+                    os.system(f'cp {item}/second_{str(nr).zfill(5)}.csv {self.respath}/{foldername}/interpolation/second_{str(int(nr+counter*self.samples)).zfill(fill)}.csv')
+                    os.system(f'cp {item}/second_{str(nr).zfill(5)}.csv.Y {self.respath}/{foldername}/interpolation/second_{str(int(nr+counter*self.samples)).zfill(fill)}.csv.Y')
         logging.info('Data copying is finished!')
                     
     def glue_video(self,nameout,gluefile=None,videos=None):
@@ -1259,9 +1263,9 @@ class GIC:
         localvar=threading.local()
         RE=6371000
         
-        string=os.listdir(self.statpath)
+        string=(file for file in os.listdir(self.statpath) if os.path.isfile(os.path.join(self.statpath, file)))
         string=sorted(string) #sort alphabetically, otherwise problems later
-        logging.debug(f'Used stations are: {string} \n')
+        logging.warning(f'Used stations are: {string} \n')
         location=np.zeros((len(string),3))
         location[:,2]=RE
         for counter1,item in enumerate(string):
@@ -1279,6 +1283,12 @@ class GIC:
                     
             File.close()
             self.samples=counter2-datastart
+            if self.samples == 24*60:
+                self.minute = True
+            elif self.samples == 24*60*60:
+                self.minute = False
+            else:
+                raise ValueError(f"Amount of samples ({self.samples}) does not correspond to minute or second data!")
         string=[]
         os.system(f' ls -d {self.respath}/{self.date}/*{self.datevar} > {self.respath}/{self.date}/temp.txt') 
         f=open(f'{self.respath}/{self.date}/temp.txt')
@@ -1430,8 +1440,10 @@ class GIC:
         xx, yy = np.meshgrid(lons, lats) #make nice mesh
 
         sec_loc=np.zeros((nlat*nlon,3))
-        for i in range(nlat*nlon): #add poles to sec_loc
-            sec_loc[i,:]=[yy.item(i),xx.item(i),RE+110e3] #system is 110 km above ground with multiple poles
+        #add poles to sec_loc
+        sec_loc[:,0]=yy.ravel()
+        sec_loc[:,1]=xx.ravel()
+        sec_loc[:,2]=RE+110e3 #system is 110 km above ground with multiple poles
 
         system_df = SECS(sec_df_loc=sec_loc) #initiate new divergence free system using poles (only df free, see paper)
 
@@ -1455,13 +1467,16 @@ class GIC:
         predyy=np.concatenate((predyy1.flatten(),predyy2.flatten(),predyy3.flatten()))
 
         pred_loc=np.zeros((nrpoint,3))
-        for i in range(nrpoint): #add locations
-            pred_loc[i,:]=[predyy.item(i),predxx.item(i),RE] #system is at ground
-
+        # add locations
+        pred_loc[:,0]=predyy.ravel()
+        pred_loc[:,1]=predxx.ravel()
+        pred_loc[:,2]=RE #system is at ground
         prediction=system_df.predict(pred_loc, False)
         result=np.zeros((nrpoint,4))
-        for i in range(nrpoint):
-            result[i,:]=[predyy.item(i),predxx.item(i),prediction[i,0],prediction[i,1]]
+        result[:,0]=predyy.ravel()
+        result[:,1]=predxx.ravel()
+        result[:,2]=prediction[:,0]
+        result[:,3]=prediction[:,1]
         return result
 
     def make_video(self,namein,nameout):

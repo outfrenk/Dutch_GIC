@@ -24,7 +24,13 @@ Calculation of geomagnetically induced currents in the Dutch powergrid. Details 
 The raw data used during research can also be found in the data folder
 
 ## Example
-An example of how to run the code (dutchgic.py) can be found in the 'usage class GIC' jupyter notebook or for a complete jupyter notebook in 'Class_GIC_notebook.ipynb' in the notebooks folder. The logbook.log in the logbook folder contains details about running the code.
+An example of how to run the code (dutchgic.py) can be found in the 'usage class GIC' jupyter notebook or for a complete jupyter notebook in 'Class_GIC_notebook.ipynb' in the notebooks folder. The logbook.log in the logbook folder contains details about running the code. 
+
+* To import the code, use the command: 
+
+    ```bash
+    from Dutch_GIC.dutchgic import GIC
+    ```
 
 ## Testing
 You can test the code using pytest as well. 

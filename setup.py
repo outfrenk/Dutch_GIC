@@ -10,5 +10,4 @@ setup(name='dutchgic',
       packages=find_packages(include=['Dutch_GIC'],exclude=['Tests']),
       install_requires=['pandas','numpy','scipy','matplotlib'],
       tests_require=['pytest'],
-      package_data={'dutchgic': ['network/*.csv']}
       )

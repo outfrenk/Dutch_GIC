@@ -29,11 +29,12 @@ def test_download(tmpdir):
     test.standard_download(['esk'])
     assert os.path.exists(f'{tmpdir}/01-01-2000/esk20000101dmin.min') is True
     assert os.path.exists(f'{tmpdir}/22-12-1999/esk19991222dmin.min') is True
+    assert test.download_data('1','1','2000','esk') is False
     os.system(f'rm -rf {tmpdir}')
     
-def test_magextract(tmpdir):
-    test=GIC(string,tmpdir,tmpdir,'12-03-1997')
-    test.standard_download(['esk'])
+def test_extract_interp(tmpdir,tmp_path):
+    test=GIC(string,tmpdir,tmp_path,'12-03-1997')
+    test.standard_download(['esk','fur'])
     assert test.qdate == "10-03-1997"
     assert os.path.exists(f'{tmpdir}/{test.qdate}') is True
     File=open(f'{test.quietpath}/esk19970310dmin.min','r')
@@ -56,4 +57,31 @@ def test_magextract(tmpdir):
     assert test.minute is True
     assert os.path.exists(f'{test.respath}/{test.date}/Eskdalemuir_{test.datevar}/allresults.csv') is True
     assert len([name for name in os.listdir(f'{test.respath}/{test.date}/Eskdalemuir_{test.datevar}')]) == 5
-    os.system(f'rm -rf {tmpdir}')
+    statstring=[]
+    os.system(f' ls -d {test.respath}/{test.date}/*{test.datevar} > {test.respath}/{test.date}/temp.txt') 
+    f=open(f'{test.respath}/{test.date}/temp.txt')
+    for item in f:
+        item=item.strip('\n')
+        statstring.append(item)
+    f.close()
+    os.system(f'rm {test.respath}/{test.date}/temp.txt')
+    assert len(statstring) == 2 
+    test.samples=3
+    test.magnetic_interpolation()
+    statstring=[]
+    os.system(f' ls -d {test.respath}/{test.date}/interpolation > {test.respath}/{test.date}/temp.txt') 
+    f=open(f'{test.respath}/{test.date}/temp.txt')
+    for item in f:
+        item=item.strip('\n')
+        statstring.append(item)
+    f.close()
+    os.system(f'rm {test.respath}/{test.date}/temp.txt')
+    assert len(statstring) == 6
+    f=open(f'{test.respath}/{test.date}/interpolation/{statstring[0]}')
+    for counter,item in enumerate(f):
+        pass
+    assert counter == 14965
+    parts=item.split()
+    assert len(parts) == 3
+    
+    os.system(f'rm -rf {tmpdir}')    
