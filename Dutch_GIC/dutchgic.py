@@ -1056,7 +1056,7 @@ class GIC:
 #         axx.legend(loc='upper right')
 #         axy.legend(loc='upper right')
         
-        os.system(f'ls -d {self.respath}/{self.date}/*/ > {self.respath}/{self.date}/temp.txt') #get location
+        os.system(f'ls -d {self.respath}/{self.date}/*{self.datevar}/ > {self.respath}/{self.date}/temp.txt') #get location
         f=open(f'{self.respath}/{self.date}/temp.txt')
         string=[]
         for item in f:
@@ -1065,7 +1065,10 @@ class GIC:
         string=sorted(string)
         f.close()
         os.system(f'rm {self.respath}/{self.date}/temp.txt')
-        os.system(f'ls {self.statpath} > {self.respath}/{self.date}/temp.txt') #get coordinates
+        if minute:
+            os.system(f'ls {self.statpath}/*min.min > {self.respath}/{self.date}/temp.txt') #get coordinates
+        else:
+            os.system(f'ls {self.statpath}/*sec.sec > {self.respath}/{self.date}/temp.txt') #get coordinates
         f=open(f'{self.respath}/{self.date}/temp.txt')
         string2=[]
         for item in f:
@@ -1076,7 +1079,7 @@ class GIC:
         lon=np.zeros(len(string2))
         stat=[]
         for counter2,item in enumerate(string2):
-            File=open(f'{self.statpath}/{item}')
+            File=open(item)
             for counter,line in enumerate(File):
                 if counter==2:
                     words=line.split()
@@ -1129,7 +1132,7 @@ class GIC:
         figy.savefig(f'{self.respath}/{self.date}/GICy_index.png')
         
     def glue_data(self,paths,foldername):
-        """ Put data of mutiple consequental days together
+        """ Put data of consecutively days together
         
         Parameters
         ----------
@@ -1942,15 +1945,15 @@ class GIC:
                 time1[0]=str(time1[0]).zfill(2)
                 time1[1]=str(time1[1]).zfill(2)
 
-                os.system(f'gmt xyz2grd {self.respath}/{self.date}/interpolation/{item} -G{self.respath}/{self.date}/interpolation/gridlat{nr}.grd -I0.05 -V -N0 {lims1}')
-                psfile1=f'{self.respath}/{self.date}/interpolation/minlat_{nr}.ps'
+                os.system(f'gmt xyz2grd {self.respath}/{self.date}/interpolation/{item} -G{self.respath}/{self.date}/Graphs/gridlat{nr}.grd -I0.05 -V -N0 {lims1}')
+                psfile1=f'{self.respath}/{self.date}/Graphs/minlat_{nr}.ps'
                 os.system(f'gmt pscoast {proj} {lims2} -W0.25p -Ggrey -Slightblue -N1/0.25p -Df -K> {psfile1}' )
                 os.system(f'gmt psbasemap {proj} {lims2} -Ba1 -BWeSn+t"Bx at {self.date} -- {time1[0]}:{time1[1]}" -O -K>> {psfile1}' )
-                os.system(f'gmt grdcontour {self.respath}/{self.date}/interpolation/gridlat{nr}.grd -C10 -A50+f20p {proj} {lims2} -O >>{psfile1}')
+                os.system(f'gmt grdcontour {self.respath}/{self.date}/Graphs/gridlat{nr}.grd -C10 -A50+f20p {proj} {lims2} -O >>{psfile1}')
                 logging.info(f'Thread {q} has released latlock.')
-            os.system(f'convert -density 300 {psfile1} {self.respath}/{self.date}/interpolation/minlat_{nr}.png')
-            os.system(f'rm {psfile1}')
-            os.system(f'rm {self.respath}/{self.date}/interpolation/gridlat{nr}.grd')
+            os.system(f'convert -density 300 {psfile1} {self.respath}/{self.date}/Graphs/minlat_{nr}.png')
+#             os.system(f'rm {psfile1}')
+            os.system(f'rm {self.respath}/{self.date}/Graphs/gridlat{nr}.grd')
             logging.info(f'Thread {q} has finished plotting lat for step {nr}.')  
 
         for item in string2[start:end]:
@@ -1962,15 +1965,15 @@ class GIC:
                 time2[0]=str(time2[0]).zfill(2)
                 time2[1]=str(time2[1]).zfill(2)
 
-                os.system(f'gmt xyz2grd {self.respath}/{self.date}/interpolation/{item} -G{self.respath}/{self.date}/interpolation/gridlon{nr}.grd -I0.05 -V -N0 {lims1}')
-                psfile2=f'{self.respath}/{self.date}/interpolation/minlon_{nr}.ps'
+                os.system(f'gmt xyz2grd {self.respath}/{self.date}/interpolation/{item} -G{self.respath}/{self.date}/Graphs/gridlon{nr}.grd -I0.05 -V -N0 {lims1}')
+                psfile2=f'{self.respath}/{self.date}/Graphs/minlon_{nr}.ps'
                 os.system(f'gmt pscoast {proj} {lims2} -W0.25p -Ggrey -Slightblue -N1/0.25p -Df -K> {psfile2}' )
                 os.system(f'gmt psbasemap {proj} {lims2} -Ba1 -BWeSn+t"By at {self.date} -- {time2[0]}:{time2[1]}" -O -K>> {psfile2}' )
-                os.system(f'gmt grdcontour {self.respath}/{self.date}/interpolation/gridlon{nr}.grd -C10 -A50+f20p {proj} {lims2} -O >>{psfile2}')
+                os.system(f'gmt grdcontour {self.respath}/{self.date}/Graphs/gridlon{nr}.grd -C10 -A50+f20p {proj} {lims2} -O >>{psfile2}')
                 logging.info(f'Thread {q} has released lonlock.')
-            os.system(f'convert -density 300 {psfile2} {self.respath}/{self.date}/interpolation/minlon_{nr}.png')
-            os.system(f'rm {psfile2}')
-            os.system(f'rm {self.respath}/{self.date}/interpolation/gridlon{nr}.grd')
+            os.system(f'convert -density 300 {psfile2} {self.respath}/{self.date}/Graphs/minlon_{nr}.png')
+#             os.system(f'rm {psfile2}')
+            os.system(f'rm {self.respath}/{self.date}/Graphs/gridlon{nr}.grd')
             logging.info(f'Thread {q} has finished plotting lon for step {nr}.')
         
     def plot_GIC(self,stationlist=None):
@@ -2044,7 +2047,7 @@ class GIC:
         plt.savefig(f'{self.respath}/{self.date}/GIC_allstations.png', bbox_extra_artists=(lgd,), bbox_inches='tight')
             
     def plot_magnetic(self):
-        """ Plots interpolated magnetic data as contour lines over the Dutch (and surrounding area)
+        """ Plots interpolated magnetic data as contour lines over the Netherlands (and surrounding area)
         
         Parameters
         ----------
@@ -2069,6 +2072,10 @@ class GIC:
         lock2=Lock()
 
         thing=os.listdir(f'{self.respath}/{self.date}/interpolation')
+        try:
+            os.mkdir(f'{self.respath}/{self.date}/Graphs')
+        except:
+            logging.warning(f"Directory '{self.respath}/{self.date}/Graphs' could not be formed or already created, data could be destroyed!")
         string=[]
         string2=[]
         for item in thing:
@@ -2079,10 +2086,10 @@ class GIC:
         string=sorted(string)
         string2=sorted(string2)
         n=6
-        nrsteps=int(self.samples/n)
+        nrsteps=int(self.samples*self.days/n)
         threads=list()
         for index in range(n):
-            q=Process(target=self.plottinglatlon, args=(q,string, string2, nrsteps*index, nrsteps*(index+1),lock,lock2))
+            q=Process(target=self.plottinglatlon, args=(n,string, string2, nrsteps*index, nrsteps*(index+1),lock,lock2))
             threads.append(q)
             q.start()
         for thread in threads:
