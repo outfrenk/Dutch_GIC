@@ -59,9 +59,9 @@ class GIC:
         if not date == None:
             try:
                 datesplit=self.date.split('-')
-                self.day=datesplit[0]
-                self.month=datesplit[1]
-                self.year=datesplit[2]
+                self.day=str(datesplit[0]).zfill(2)
+                self.month=str(datesplit[1]).zfill(2)
+                self.year=str(datesplit[2])
                 self.datevar=f'{self.year}-{self.month}-{self.day}' #get day string in reverse order, so yyyy-mm-dd
             except:
                 logging.warning('Date has not been inputted correctly, it should be dd-mm-yyyy')
@@ -414,7 +414,7 @@ class GIC:
             trafo_icon[line]=trafo.at[line,'trafonr']
         ##### make trafo-trafo connectivity matrix ######
         for line in range(len(trafo)): 
-            temp=trafo.at[line,'verbonden trafo'] #get right column
+            temp=str(trafo.at[line,'verbonden trafo']) #get right column
             temp=temp.split(",") #split values
 
             for item in temp:
@@ -424,7 +424,7 @@ class GIC:
             del temp
         ###### make trafo-cable connectivity matrix ######
         for line in range(len(trafo)):
-            temp=trafo.at[line,'alle aansluitingen']
+            temp=str(trafo.at[line,'alle aansluitingen'])
             temp=temp.split(",")
             for item in temp:
                 temp2=int(item)
@@ -466,7 +466,6 @@ class GIC:
             thread.join()
         logging.info("Script has been completed!")
         print("Script has been completed!")
-        logging.shutdown()
         
     def calcE(self,kabels,EX_matrix,EY_matrix,lat,lon,time,guess,localvar): #E for all cables
         """ Integrates the electric field over the given cables to obtain potentials
@@ -563,7 +562,7 @@ class GIC:
         else:
             raise Exception("Data is missing, or it is no minute or second data")
     
-    def download_data(self,day,month,year,station,types=True):
+    def download_data(self,day,month,year,station,types=True,force_download=False):
         """ Automatically downloads magnetic data from the Intermagnet ftp server
            ('ftp://ftp.seismo.nrcan.gc.ca/intermagnet')
         
@@ -581,6 +580,8 @@ class GIC:
            abbreviation of magnetic observatory in IAGA code
         types : boolean (optional)
            if True, minute data is to be downloaded (not available before 1991); if False, second data is to be downloaded (not available before 2011)
+        force_download : boolean (optional)
+           if True, magnetic data is downloaded even if it already exist   
            
         Created Folders
         ---------------
@@ -601,24 +602,33 @@ class GIC:
         except:
             logging.warning(f"Directory '{self.base}/{day}-{month}-{year}' might already exist, or cannot be formed")
         logging.info(f'Downloading data for station {station} on {day}-{month}-{year}')
-        if types==True: #minute data
+        if types==True and (os.path.exists(f'{self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min')==False or force_download==True) : #minute data
             URL="ftp://ftp.seismo.nrcan.gc.ca/intermagnet/minute/definitive/IAGA2002"
             try:
                 urlretrieve(f'{URL}/{year}/{month}/{station}{year}{month}{day}dmin.min.gz', f'{self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min.gz')
             except:
                 raise Exception('Data does not exist for given input, station might not be recorded yet. Input should have length: 3-2-2-4')
             os.system(f'gunzip {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min.gz')
-            os.system(f'rm {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min.gz')
+            try:
+                os.system(f'rm {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min.gz')
+            except:
+                pass
             
-        else: #second data
+        elif types==False and (os.path.exists(f'{self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec')==False or force_download==True) : #second data
             URL="ftp://ftp.seismo.nrcan.gc.ca/intermagnet/second/quasi-definitive/IAGA2002"
             try:
                 urlretrieve(f'{URL}/{year}/{month}/{station}{year}{month}{day}qsec.sec.gz', f'{self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz')
             except:
                 raise Exception('Data does not exist for given input, station might not be recorded yet. Input should have length: 3-2-2-4')
             os.system(f'gunzip {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz') 
-            os.system(f'rm {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz') 
-
+            try:
+                os.system(f'rm {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz') 
+            except:
+                pass
+        else:
+            logging.warning(f'No data for station {station} on {day}-{month}-{year} has been downloaded. The data already exist!')
+            return False
+        
     def filt(self,x,ft_matrix): 
         """ Applies Wiener filter to given data to remove noise
         
@@ -643,8 +653,8 @@ class GIC:
         signal=np.zeros((len(ft_matrix),len(ft_matrix[0])), dtype='complex')
         n=len(x)
         
-        PSD=2*np.sum(abs(ft_matrix), axis=1)/len(ft_matrix) #create mean power spectrum density
-        a,sigma=curve_fit(self.func, x[2*int(n/3):], 2*np.sum(abs(ft_matrix[2*int(n/3):]), axis=1)/len(ft_matrix)) #fit a exp line to end graph
+        PSD=2*np.nansum(abs(ft_matrix), axis=1)/len(ft_matrix) #create mean power spectrum density
+        a,sigma=curve_fit(self.func, x[2*int(n/3):], 2*np.nansum(abs(ft_matrix[2*int(n/3):]), axis=1)/len(ft_matrix)) #fit a exp line to end graph
         Wiener=(PSD-self.func(x,*a))/PSD #create filter
         for i in range(len(ft_matrix[0])):
             signal[:,i]=ft_matrix[:,i]*Wiener #apply filter
@@ -717,7 +727,7 @@ class GIC:
                     os.system(f'rm {self.base}/Kp_index_{newyear}.txt')
                     break
             
-        elif self.month=='01' and self.year[3]=='0':
+        elif str(self.month).zfill(2)=='01' and self.year[3]=='0':
             newyear=str(int(self.year)-1)
             try:
                 urlretrieve(f'{URL}/qd{newyear[0:3]}0{newyear[2]}9.txt', f'{self.base}/Kp_index_{newyear}.txt')
@@ -728,7 +738,7 @@ class GIC:
                     raise Exception('URL could not be retrieved, check your date string!')
             f=open(f'{self.base}/Kp_index_{newyear}.txt')
             for counter,line in enumerate(f):
-                if counter==130:
+                if counter==142:
                     words=line.split()
                     option0=[''.join(i for i in words[2] if i.isdigit()), 12, int(self.year)-1]
                     option0A=[''.join(i for i in words[3] if i.isdigit()), 12, int(self.year)-1]
@@ -771,7 +781,7 @@ class GIC:
                         f.close()
                         os.system(f'rm {self.base}/Kp_index_{self.year}.txt')
                         break
-                elif self.month=='1':
+                elif str(self.month).zfill(2)=='01':
                     if counter==(int(self.year)-int(self.year[0:3])*10)*14+2:
                         words=line.split()
                         option0=[''.join(i for i in words[2] if i.isdigit()), 12, int(self.year)-1]
@@ -1052,7 +1062,7 @@ class GIC:
 #         axx.legend(loc='upper right')
 #         axy.legend(loc='upper right')
         
-        os.system(f'ls -d {self.respath}/{self.date}/*/ > {self.respath}/{self.date}/temp.txt') #get location
+        os.system(f'ls -d {self.respath}/{self.date}/*{self.datevar}/ > {self.respath}/{self.date}/temp.txt') #get location
         f=open(f'{self.respath}/{self.date}/temp.txt')
         string=[]
         for item in f:
@@ -1061,7 +1071,10 @@ class GIC:
         string=sorted(string)
         f.close()
         os.system(f'rm {self.respath}/{self.date}/temp.txt')
-        os.system(f'ls {self.statpath} > {self.respath}/{self.date}/temp.txt') #get coordinates
+        if self.minute:
+            os.system(f'ls {self.statpath}/*min.min > {self.respath}/{self.date}/temp.txt') #get coordinates
+        else:
+            os.system(f'ls {self.statpath}/*sec.sec > {self.respath}/{self.date}/temp.txt') #get coordinates
         f=open(f'{self.respath}/{self.date}/temp.txt')
         string2=[]
         for item in f:
@@ -1072,7 +1085,7 @@ class GIC:
         lon=np.zeros(len(string2))
         stat=[]
         for counter2,item in enumerate(string2):
-            File=open(f'{self.statpath}/{item}')
+            File=open(item)
             for counter,line in enumerate(File):
                 if counter==2:
                     words=line.split()
@@ -1125,7 +1138,7 @@ class GIC:
         figy.savefig(f'{self.respath}/{self.date}/GICy_index.png')
         
     def glue_data(self,paths,foldername):
-        """ Put data of mutiple consequental days together
+        """ Put data of consecutively days together
         
         Parameters
         ----------
@@ -1141,7 +1154,7 @@ class GIC:
         logging.warning(f'Look Out! self.date is now changed from {self.date} to {foldername}!')
         self.date=foldername
         for path in paths:
-            if self.samples==None:
+            if self.samples==0:
                 self.samples=len([name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))])/2 #both x and y files
                 if self.samples==24*60:
                     self.minute=True
@@ -1149,11 +1162,11 @@ class GIC:
                     self.minute=False
                 else:
                     raise Exception("Folders do not contain minute or second data, or data is missing!")
-            elif self.samples!=None and self.samples!=len([name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))])/2:
+            elif self.samples!=0 and self.samples!=int(len([name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))])/2):
                 raise Exception("Folders contain different amount of files!")
             else:
                 pass
-        test=str(self.samples*len(paths))
+        test=str(int(self.samples*len(paths)))
         fill=len(test) #get length of number string
         try:
             os.mkdir(f'{self.respath}/{foldername}')
@@ -1167,13 +1180,13 @@ class GIC:
         if self.minute:
             for counter,item in enumerate(paths):
                 for nr in range(int(self.samples)):
-                    os.system(f'cp {item}/minute_{str(nr).zfill(4)}.csv {self.respath}/{foldername}/interpolation/minute_{str(nr+counter*self.samples).zfill(fill)}.csv')
-                    os.system(f'cp {item}/minute_{str(nr).zfill(4)}.csv.Y {self.respath}/{foldername}/interpolation/minute_{str(nr+counter*self.samples).zfill(fill)}.csv.Y')
+                    os.system(f'cp {item}/minute_{str(nr).zfill(4)}.csv {self.respath}/{foldername}/interpolation/minute_{str(int(nr+counter*self.samples)).zfill(fill)}.csv')
+                    os.system(f'cp {item}/minute_{str(nr).zfill(4)}.csv.Y {self.respath}/{foldername}/interpolation/minute_{str(int(nr+counter*self.samples)).zfill(fill)}.csv.Y')
         else:
             for counter,item in enumerate(paths):
                 for nr in range(int(self.samples)):
-                    os.system(f'cp {item}/second_{str(nr).zfill(5)}.csv {self.respath}/{foldername}/interpolation/second_{str(nr+counter*self.samples).zfill(fill)}.csv')
-                    os.system(f'cp {item}/second_{str(nr).zfill(5)}.csv.Y {self.respath}/{foldername}/interpolation/second_{str(nr+counter*self.samples).zfill(fill)}.csv.Y')
+                    os.system(f'cp {item}/second_{str(nr).zfill(5)}.csv {self.respath}/{foldername}/interpolation/second_{str(int(nr+counter*self.samples)).zfill(fill)}.csv')
+                    os.system(f'cp {item}/second_{str(nr).zfill(5)}.csv.Y {self.respath}/{foldername}/interpolation/second_{str(int(nr+counter*self.samples)).zfill(fill)}.csv.Y')
         logging.info('Data copying is finished!')
                     
     def glue_video(self,nameout,gluefile=None,videos=None):
@@ -1259,9 +1272,9 @@ class GIC:
         localvar=threading.local()
         RE=6371000
         
-        string=os.listdir(self.statpath)
+        string=(file for file in os.listdir(self.statpath) if os.path.isfile(os.path.join(self.statpath, file)))
         string=sorted(string) #sort alphabetically, otherwise problems later
-        logging.debug(f'Used stations are: {string} \n')
+        logging.warning(f'Used stations are: {string} \n')
         location=np.zeros((len(string),3))
         location[:,2]=RE
         for counter1,item in enumerate(string):
@@ -1279,6 +1292,12 @@ class GIC:
                     
             File.close()
             self.samples=counter2-datastart
+            if self.samples == 24*60:
+                self.minute = True
+            elif self.samples == 24*60*60:
+                self.minute = False
+            else:
+                raise ValueError(f"Amount of samples ({self.samples}) does not correspond to minute or second data!")
         string=[]
         os.system(f' ls -d {self.respath}/{self.date}/*{self.datevar} > {self.respath}/{self.date}/temp.txt') 
         f=open(f'{self.respath}/{self.date}/temp.txt')
@@ -1430,8 +1449,10 @@ class GIC:
         xx, yy = np.meshgrid(lons, lats) #make nice mesh
 
         sec_loc=np.zeros((nlat*nlon,3))
-        for i in range(nlat*nlon): #add poles to sec_loc
-            sec_loc[i,:]=[yy.item(i),xx.item(i),RE+110e3] #system is 110 km above ground with multiple poles
+        #add poles to sec_loc
+        sec_loc[:,0]=yy.ravel()
+        sec_loc[:,1]=xx.ravel()
+        sec_loc[:,2]=RE+110e3 #system is 110 km above ground with multiple poles
 
         system_df = SECS(sec_df_loc=sec_loc) #initiate new divergence free system using poles (only df free, see paper)
 
@@ -1455,13 +1476,16 @@ class GIC:
         predyy=np.concatenate((predyy1.flatten(),predyy2.flatten(),predyy3.flatten()))
 
         pred_loc=np.zeros((nrpoint,3))
-        for i in range(nrpoint): #add locations
-            pred_loc[i,:]=[predyy.item(i),predxx.item(i),RE] #system is at ground
-
+        # add locations
+        pred_loc[:,0]=predyy.ravel()
+        pred_loc[:,1]=predxx.ravel()
+        pred_loc[:,2]=RE #system is at ground
         prediction=system_df.predict(pred_loc, False)
         result=np.zeros((nrpoint,4))
-        for i in range(nrpoint):
-            result[i,:]=[predyy.item(i),predxx.item(i),prediction[i,0],prediction[i,1]]
+        result[:,0]=predyy.ravel()
+        result[:,1]=predxx.ravel()
+        result[:,2]=prediction[:,0]
+        result[:,3]=prediction[:,1]
         return result
 
     def make_video(self,namein,nameout):
@@ -1927,15 +1951,15 @@ class GIC:
                 time1[0]=str(time1[0]).zfill(2)
                 time1[1]=str(time1[1]).zfill(2)
 
-                os.system(f'gmt xyz2grd {self.respath}/{self.date}/interpolation/{item} -G{self.respath}/{self.date}/interpolation/gridlat{nr}.grd -I0.05 -V -N0 {lims1}')
-                psfile1=f'{self.respath}/{self.date}/interpolation/minlat_{nr}.ps'
+                os.system(f'gmt xyz2grd {self.respath}/{self.date}/interpolation/{item} -G{self.respath}/{self.date}/Graphs/gridlat{nr}.grd -I0.05 -V -N0 {lims1}')
+                psfile1=f'{self.respath}/{self.date}/Graphs/minlat_{nr}.ps'
                 os.system(f'gmt pscoast {proj} {lims2} -W0.25p -Ggrey -Slightblue -N1/0.25p -Df -K> {psfile1}' )
                 os.system(f'gmt psbasemap {proj} {lims2} -Ba1 -BWeSn+t"Bx at {self.date} -- {time1[0]}:{time1[1]}" -O -K>> {psfile1}' )
-                os.system(f'gmt grdcontour {self.respath}/{self.date}/interpolation/gridlat{nr}.grd -C10 -A50+f20p {proj} {lims2} -O >>{psfile1}')
+                os.system(f'gmt grdcontour {self.respath}/{self.date}/Graphs/gridlat{nr}.grd -C10 -A50+f20p {proj} {lims2} -O >>{psfile1}')
                 logging.info(f'Thread {q} has released latlock.')
-            os.system(f'convert -density 300 {psfile1} {self.respath}/{self.date}/interpolation/minlat_{nr}.png')
-            os.system(f'rm {psfile1}')
-            os.system(f'rm {self.respath}/{self.date}/interpolation/gridlat{nr}.grd')
+            os.system(f'convert -density 300 {psfile1} {self.respath}/{self.date}/Graphs/minlat_{nr}.png')
+#             os.system(f'rm {psfile1}')
+            os.system(f'rm {self.respath}/{self.date}/Graphs/gridlat{nr}.grd')
             logging.info(f'Thread {q} has finished plotting lat for step {nr}.')  
 
         for item in string2[start:end]:
@@ -1947,15 +1971,15 @@ class GIC:
                 time2[0]=str(time2[0]).zfill(2)
                 time2[1]=str(time2[1]).zfill(2)
 
-                os.system(f'gmt xyz2grd {self.respath}/{self.date}/interpolation/{item} -G{self.respath}/{self.date}/interpolation/gridlon{nr}.grd -I0.05 -V -N0 {lims1}')
-                psfile2=f'{self.respath}/{self.date}/interpolation/minlon_{nr}.ps'
+                os.system(f'gmt xyz2grd {self.respath}/{self.date}/interpolation/{item} -G{self.respath}/{self.date}/Graphs/gridlon{nr}.grd -I0.05 -V -N0 {lims1}')
+                psfile2=f'{self.respath}/{self.date}/Graphs/minlon_{nr}.ps'
                 os.system(f'gmt pscoast {proj} {lims2} -W0.25p -Ggrey -Slightblue -N1/0.25p -Df -K> {psfile2}' )
                 os.system(f'gmt psbasemap {proj} {lims2} -Ba1 -BWeSn+t"By at {self.date} -- {time2[0]}:{time2[1]}" -O -K>> {psfile2}' )
-                os.system(f'gmt grdcontour {self.respath}/{self.date}/interpolation/gridlon{nr}.grd -C10 -A50+f20p {proj} {lims2} -O >>{psfile2}')
+                os.system(f'gmt grdcontour {self.respath}/{self.date}/Graphs/gridlon{nr}.grd -C10 -A50+f20p {proj} {lims2} -O >>{psfile2}')
                 logging.info(f'Thread {q} has released lonlock.')
-            os.system(f'convert -density 300 {psfile2} {self.respath}/{self.date}/interpolation/minlon_{nr}.png')
-            os.system(f'rm {psfile2}')
-            os.system(f'rm {self.respath}/{self.date}/interpolation/gridlon{nr}.grd')
+            os.system(f'convert -density 300 {psfile2} {self.respath}/{self.date}/Graphs/minlon_{nr}.png')
+#             os.system(f'rm {psfile2}')
+            os.system(f'rm {self.respath}/{self.date}/Graphs/gridlon{nr}.grd')
             logging.info(f'Thread {q} has finished plotting lon for step {nr}.')
         
     def plot_GIC(self,stationlist=None):
@@ -2029,7 +2053,7 @@ class GIC:
         plt.savefig(f'{self.respath}/{self.date}/GIC_allstations.png', bbox_extra_artists=(lgd,), bbox_inches='tight')
             
     def plot_magnetic(self):
-        """ Plots interpolated magnetic data as contour lines over the Dutch (and surrounding area)
+        """ Plots interpolated magnetic data as contour lines over the Netherlands (and surrounding area)
         
         Parameters
         ----------
@@ -2054,6 +2078,10 @@ class GIC:
         lock2=Lock()
 
         thing=os.listdir(f'{self.respath}/{self.date}/interpolation')
+        try:
+            os.mkdir(f'{self.respath}/{self.date}/Graphs')
+        except:
+            logging.warning(f"Directory '{self.respath}/{self.date}/Graphs' could not be formed or already created, data could be destroyed!")
         string=[]
         string2=[]
         for item in thing:
@@ -2064,10 +2092,10 @@ class GIC:
         string=sorted(string)
         string2=sorted(string2)
         n=6
-        nrsteps=int(self.samples/n)
+        nrsteps=int(self.samples*self.days/n)
         threads=list()
         for index in range(n):
-            q=Process(target=self.plottinglatlon, args=(q,string, string2, nrsteps*index, nrsteps*(index+1),lock,lock2))
+            q=Process(target=self.plottinglatlon, args=(n,string, string2, nrsteps*index, nrsteps*(index+1),lock,lock2))
             threads.append(q)
             q.start()
         for thread in threads:

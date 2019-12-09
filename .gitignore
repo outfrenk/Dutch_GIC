@@ -13,3 +13,4 @@ dist/
 dutchgic.py.egg-info/
 .pytest_cache
 __pycache__
+*.egg-info*
