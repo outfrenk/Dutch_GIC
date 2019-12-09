@@ -29,7 +29,7 @@ An example of how to run the code (dutchgic.py) can be found in the 'usage class
 * To import the code, use the command: 
 
     ```bash
-    from Dutch_GIC.dutchgic import GIC
+    > from Dutch_GIC.dutchgic import GIC
     ```
 
 ## Testing

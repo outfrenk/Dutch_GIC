@@ -609,7 +609,10 @@ class GIC:
             except:
                 raise Exception('Data does not exist for given input, station might not be recorded yet. Input should have length: 3-2-2-4')
             os.system(f'gunzip {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min.gz')
-            os.system(f'rm {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min.gz')
+            try:
+                os.system(f'rm {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}dmin.min.gz')
+            except:
+                pass
             
         elif types==False and (os.path.exists(f'{self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec')==False or force_download==True) : #second data
             URL="ftp://ftp.seismo.nrcan.gc.ca/intermagnet/second/quasi-definitive/IAGA2002"
@@ -618,7 +621,10 @@ class GIC:
             except:
                 raise Exception('Data does not exist for given input, station might not be recorded yet. Input should have length: 3-2-2-4')
             os.system(f'gunzip {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz') 
-            os.system(f'rm {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz') 
+            try:
+                os.system(f'rm {self.base}/{day}-{month}-{year}/{station}{year}{month}{day}qsec.sec.gz') 
+            except:
+                pass
         else:
             logging.warning(f'No data for station {station} on {day}-{month}-{year} has been downloaded. The data already exist!')
             return False
@@ -1065,7 +1071,7 @@ class GIC:
         string=sorted(string)
         f.close()
         os.system(f'rm {self.respath}/{self.date}/temp.txt')
-        if minute:
+        if self.minute:
             os.system(f'ls {self.statpath}/*min.min > {self.respath}/{self.date}/temp.txt') #get coordinates
         else:
             os.system(f'ls {self.statpath}/*sec.sec > {self.respath}/{self.date}/temp.txt') #get coordinates
