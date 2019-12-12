@@ -2009,7 +2009,7 @@ class GIC:
         import numpy as np
         import pandas as pd
         self.check_sampling()
-        if stationlist==None:
+        if all(elements is None for elements in stationlist):
             # Dutch stations to plot
             A=np.arange(3,21)
             B=np.arange(46,54,1)
