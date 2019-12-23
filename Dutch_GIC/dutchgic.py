@@ -87,7 +87,7 @@ class GIC:
         f.write("0 100/0/0 10000 100/0/0")
         f.close()
 
-    def BtoE(self,model,scaling=1):
+    def BtoE(self,model,scaling=1,proc=6):
         """ Transforms magnetic field values to electric field value using a given conductivity model. 
         Theory by Weaver's 'Mathematical methods for geo-electromagnetic induction' (1994) and Wait's 'Propagation of radio waves over a stratified ground' (1985)
 
@@ -99,6 +99,8 @@ class GIC:
            determines which conductivity model is used to transform magnetic field observations to electric field
         scaling : float (optional)
            factor that is multiplied with magnetic field observations/interpolations to create extreme events. Standard set at one (no extra scaling).
+        proc : integer (optional)
+           number of processors used. standard set at 6
         
         NEEDS MAGNETIC INTERPOLATED VALUES (.csv and .csv.Y) TO WORK!
  
@@ -259,7 +261,7 @@ class GIC:
         except:
             logging.warning('Directory is already created, data could be overwritten.')
 
-        n=6
+        n=proc
         nrsteps=int(self.samples*self.days/n) #aangepast
         threads=list()
         for index in range(n):
@@ -277,7 +279,7 @@ class GIC:
         for thread in threads:
             thread.join()
         
-    def calculate_GIC(self,guess=80, plotting=True):
+    def calculate_GIC(self,guess=80, plotting=True, proc=6):
         """ Calculates geomagnetically induced current in a given powergrid
         
         Parameters
@@ -288,6 +290,8 @@ class GIC:
            gives an estimation in how many pieces the integration of the electric field should be executed in the calcE function. Standard set at 80.
         plotting : boolean (optional)
            if True, figures are generated containing the spatial variation of GICs in the given powergrid per timestep. Standard set at True
+        proc : integer (optional)
+           number of processors used, standard set at 6
 
         NEEDS POWERGRID CSV FILES AND ELECTRIC FIELD TO WORK
         
@@ -455,7 +459,7 @@ class GIC:
         ############################### Run the function with multiple processors ##########################################
         logging.info('Start multiprocessing!')
         print("New data is added now!")
-        n=6
+        n=proc
         nrsteps=int(self.samples*self.days/n)
         threads=list()
         for index in range(n):
@@ -1244,16 +1248,17 @@ class GIC:
         for counter,item in enumerate(string):
             self.newplotspace(string[counter],stringquiet[counter],plots=True)
      
-    def magnetic_interpolation(self):
+    def magnetic_interpolation(self, proc=3):
         """ Interpolates magnetic field for given domain
         
         Parameters
         ----------
         self :  boolean, integer, or string (required)
            necessary objects of self are set in the __init__ and check_sampling function. For more information look at the __init__ or check_sampling function
+        proc : integer (optional)
+           number of processors used. NR OF PROCESSORS IS SET AT 3, DUE TO COMPUTATIONAL LIMITS. NR CAN BE INCREASED AT OWN RISK
            
-        NEEDS PROCESSED DATA MAGNETIC OBSERAVTORIES TO WORK
-        NR OF PROCESSORS IS SET AT 3, DUE TO COMPUTATIONAL LIMITS. NR CAN BE INCREASED AT OWN RISK
+        NEEDS PROCESSED DATA MAGNETIC OBSERVATORIES TO WORK
         
         Functions
         ---------
@@ -1315,7 +1320,7 @@ class GIC:
             print('Directory is already created, data could be overwritten.')
             logging.info('Directory is already created, data could be overwritten.')
 
-        n=3 #no more than 3 processors at a time for 16GB memory
+        n=proc #no more than 3 processors at a time for 16GB memory
         nrsteps=int(self.samples/n)
         threads=list()
         for index in range(n):
@@ -1982,7 +1987,7 @@ class GIC:
             os.system(f'rm {self.respath}/{self.date}/Graphs/gridlon{nr}.grd')
             logging.info(f'Thread {q} has finished plotting lon for step {nr}.')
         
-    def plot_GIC(self,stationlist=None):
+    def plot_GIC(self,stationlist=[None,None]):
         """ Gives a visual representation of GIC per transformer over time
         
         Parameters
