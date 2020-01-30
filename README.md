@@ -108,3 +108,6 @@ If we would run the function *runall()*, it would run the following functions:
 
 ### *GIC_index()*
 There is also a GIC_index function (developed by Marshall et al., 2011). This function needs magnetic values from *magnetic_interpolation()* to work. It uses *check_sampling()* in the process.
+
+### Questions about the code?
+You can send me a message to my emailadress
