@@ -2146,7 +2146,7 @@ class GIC:
             qday, qmonth, qyear = self.find_quiet_date() #find the nearest quiet solar day
             qday=str(qday).zfill(2)
             qmonth=str(qmonth).zfill(2)
-            self.qdate=f'{qday}-{qmonth}-{qyear}'
+            self.qdate=f'{str(qday).zfill(2)}-{str(qmonth).zfill(2)}-{qyear}'
         else:
            quietday = self.qdate.split('-')
            qday, qmonth, qyear = quietday[0], quietday[1], quietday[2]
